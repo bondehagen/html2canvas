@@ -192,7 +192,9 @@ html2canvas.Generate.Gradient = function(src, bounds) {
             }
         }
     }
+    
     if ( tmp = src.match(/-webkit-linear-gradient\((.*)\)/) ) {
+        
         position = tmp[1].split( ",", 1 )[0];
         getColors( tmp[1].substr( position.length + 2 ) );
         position = position.split(' ');
@@ -220,6 +222,7 @@ html2canvas.Generate.Gradient = function(src, bounds) {
         }
 
     } else if (tmp = src.match(/-webkit-gradient\(linear, (\d+)[%]{0,1} (\d+)[%]{0,1}, (\d+)[%]{0,1} (\d+)[%]{0,1}, from\((.*)\), to\((.*)\)\)/)) {
+        
         p0 = (tmp[1] * bounds.width) / 100;
         p1 = (tmp[2] * bounds.height) / 100;
         p2 = (tmp[3] * bounds.width) / 100;
@@ -228,7 +231,8 @@ html2canvas.Generate.Gradient = function(src, bounds) {
         steps.push(tmp[5]);
         steps.push(tmp[6]);
         
-    } else if (tmp = src.match(/-moz-linear-gradient\((\d+)% (\d+)%, (.*)\)/)) {
+    } else if (tmp = src.match(/-moz-linear-gradient\((\d+)[%]{0,1} (\d+)[%]{0,1}, (.*)\)/)) {
+        
         p0 = (tmp[1] * bounds.width) / 100;
         p1 = (tmp[2] * bounds.width) / 100;
         p2 = bounds.width - p0;
@@ -373,7 +377,21 @@ html2canvas.Parse = function (element, images, opts) {
             numDraws+=1;
         }
     }
-    
+
+    function drawBorders(ctx, borders) {
+        ctx.drawBorders(borders);
+    }
+
+    /*function drawStyledLine(ctx, x, y, w, h, bgcolor, style) {
+        if (bgcolor !== "transparent") {
+            if (style && style !== "solid") {
+                ctx.setVariable("fillStyle", bgcolor);
+                ctx.drawStyledLine(x, y, w, h, style);
+            } else {
+                renderRect(ctx, x, y, w, h, bgcolor);
+            }
+        }
+    }*/
     
     function textTransform (text, transform) {
         switch(transform){
@@ -738,24 +756,23 @@ html2canvas.Parse = function (element, images, opts) {
             for (s = 0; s < 4; s+=1){
                 borders.push({
                     width: getCSS(el, 'border' + sides[s] + 'Width', true),
-                    color: getCSS(el, 'border' + sides[s] + 'Color', false)
+                    color: getCSS(el, 'border' + sides[s] + 'Color', false),
+                    style: getCSS(el, 'border' + sides[s] + 'Style', false)
                 });          
             }
-          
-            return borders; 
+            return borders;
             
         }(el));    
         
-
-        for (borderSide = 0; borderSide < 4; borderSide+=1){
+        var borderData = {};
+        for (borderSide = 0; borderSide < 4; borderSide += 1) {
             borderData = borders[borderSide];
                 
-            if (borderData.width>0){
+            if (borderData.width > 0) {
                 bx = x;
                 by = y;
                 bw = w;
                 bh = h - (borders[2].width);
-                
                 switch(borderSide){
                     case 0:
                         // top border
@@ -788,15 +805,13 @@ html2canvas.Parse = function (element, images, opts) {
                     borderBounds = clipBounds(borderBounds, clip);
                 }
                    
-                   
-                if (borderBounds.width>0 && borderBounds.height>0){                           
-                    renderRect(ctx, bx, by, borderBounds.width, borderBounds.height, borderData.color);
+                if (borderBounds.width > 0 && borderBounds.height > 0) {
+                    borderData.bounds = [bx, by, borderBounds.width, borderBounds.height]
+                    //drawStyledLine(ctx, bx, by, borderBounds.width, borderBounds.height, borderData.color, borderData.style || "solid");
                 }
-                
-          
             }
         }
-
+        drawBorders(ctx, borders);
         return borders;
     
     }
@@ -1663,7 +1678,16 @@ html2canvas.canvasContext = function (width, height) {
     this.width = width;
     this.height = height;
     //this.zIndex;
-    
+
+    this.drawBorders = function() {
+        this.storage.push(
+        {
+            type: "function",
+            name: "drawBorders",
+            'arguments': arguments
+        });
+    };
+
     this.fillRect = function(){
         this.storage.push(
         {
@@ -1806,53 +1830,90 @@ html2canvas.Renderer = function(parseQueue, opts){
         
             }
         
-            if (storageContext.ctx.storage){
-               
+            if (storageContext.ctx.storage) {
                 for (a = 0, storageLen = storageContext.ctx.storage.length; a < storageLen; a+=1){
-                    
                     renderItem = storageContext.ctx.storage[a];
-                    
-                   
-                    
+
                     switch(renderItem.type){
                         case "variable":
                             ctx[renderItem.name] = renderItem['arguments'];              
                             break;
                         case "function":
-                            if (renderItem.name === "fillRect") {
-                        
-                                ctx.fillRect(
-                                    renderItem['arguments'][0],
-                                    renderItem['arguments'][1],
-                                    renderItem['arguments'][2],
-                                    renderItem['arguments'][3]
-                                    );
-                            }else if(renderItem.name === "fillText") {
-                                // console.log(renderItem.arguments[0]);
-                                ctx.fillText(renderItem['arguments'][0],renderItem['arguments'][1],renderItem['arguments'][2]);
-                    
-                            }else if(renderItem.name === "drawImage") {
-                                //  console.log(renderItem);
-                                // console.log(renderItem.arguments[0].width);    
-                                if (renderItem['arguments'][8] > 0 && renderItem['arguments'][7]){
-                                    ctx.drawImage(
-                                        renderItem['arguments'][0],
-                                        renderItem['arguments'][1],
-                                        renderItem['arguments'][2],
-                                        renderItem['arguments'][3],
-                                        renderItem['arguments'][4],
-                                        renderItem['arguments'][5],
-                                        renderItem['arguments'][6],
-                                        renderItem['arguments'][7],
-                                        renderItem['arguments'][8]
-                                        );
-                                }      
+                            switch(renderItem.name) {
+                                case 'fillRect':
+                                    ctx.fillRect.apply(ctx, renderItem['arguments']);
+                                break;
+                                case 'drawBorders':
+                                    var borders = renderItem['arguments'][0];
+                                    for (var side = 0; side < 4; side++) {
+                                        var border = borders[side];
+                                        if (border.color != 'none' && typeof border.bounds !== "undefined") {
+                                            var bounds = border.bounds;
+                                            // clip the border side
+                                            ctx.save();
+                                            ctx.beginPath();
+                                            //draw shape
+                                            ctx.rect(bounds[0], bounds[1], bounds[2], bounds[3]);
+                                            ctx.clip();
+                                            ctx.fillStyle = border.color;
+
+                                            var horizontal = bounds[2] > bounds[3],
+                                                bigSide = bounds[-~!horizontal + 1],
+                                                smallSide = bounds[-~!!horizontal + 1];
+                                            
+                                            switch(border.style) {
+                                                case 'dashed':
+                                                    break;
+                                                case 'dotted':
+                                                    var count = 0,
+                                                        radius = smallSide / 2, cache = Math.PI*2;
+                                                    for (var x = radius; x < bigSide; x += smallSide) {
+                                                        if (count % 2 == 0) {
+                                                            ctx.beginPath();
+                                                            ctx.arc(bounds[0] + (horizontal ? x : radius), bounds[1] + (horizontal ? radius : x), radius, 0,cache, true);
+                                                            ctx.closePath();
+                                                            ctx.fill();
+                                                        }
+                                                        count++;
+                                                    }
+                                                    break;
+                                                case 'double':
+                                                    ctx.beginPath();
+                                                    var size = smallSide / 3;
+                                                    if (horizontal) { // must add width height of previous borders
+                                                        ctx.fillRect(bounds[0], bounds[1], bounds[2], size);
+                                                        ctx.fillRect(bounds[0], bounds[1] + (size * 2), bounds[2], size);
+                                                    } else {
+                                                        ctx.fillRect(bounds[0], bounds[1], size, bounds[3]);
+                                                        ctx.fillRect(bounds[0] + (size * 2), bounds[1], size, bounds[3]);
+                                                    }
+                                                    ctx.closePath();
+                                                    break;
+                                                case 'solid':
+                                                    ctx.fillRect.apply(ctx, bounds);
+                                                    break;
+                                                default:
+                                                case 'none':
+                                                    break;
+                                            }
+
+                                            ctx.closePath();
+                                            ctx.fill();
+                                            ctx.restore();
+                                        }
+                                    }
+                                    break;
+                                case 'fillText':
+                                    ctx.fillText(renderItem['arguments'][0],renderItem['arguments'][1],renderItem['arguments'][2]);
+                                break;
+                                case 'drawImage':
+                                    if (renderItem['arguments'][8] > 0 && renderItem['arguments'][7]){
+                                        ctx.drawImage.apply(ctx, renderItem['arguments']);
+                                    }
+                                break;
                             }
-                       
-  
                             break;
                         default:
-                               
                     }
             
                 }
@@ -1861,10 +1922,6 @@ html2canvas.Renderer = function(parseQueue, opts){
             if (storageContext.clip){
                 ctx.restore();
             }
-    
-
-       
-   
         }
         
         // this.canvasRenderStorage(queue,this.ctx);
