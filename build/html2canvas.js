@@ -1849,18 +1849,33 @@ html2canvas.Renderer = function(parseQueue, opts){
                                         var border = borders[side];
                                         if (border.color != 'none' && typeof border.bounds !== "undefined") {
                                             var bounds = border.bounds;
+                                            var horizontal = bounds[2] > bounds[3],
+                                                bigSide = bounds[-~!horizontal + 1],
+                                                smallSide = bounds[-~!!horizontal + 1];
+
                                             // clip the border side
                                             ctx.save();
                                             ctx.beginPath();
                                             //draw shape
-                                            ctx.rect(bounds[0], bounds[1], bounds[2], bounds[3]);
+                                            if (side == 0) {
+                                                ctx.moveTo(bounds[0], bounds[1]);
+                                                ctx.lineTo(bounds[0] + bounds[2], bounds[1]);
+                                                ctx.lineTo(bounds[0] + bounds[2] - borders[1].width, bounds[1] + border.width);
+                                                ctx.lineTo(bounds[0] + borders[3].width, bounds[1] + border.width);
+                                            } else if (side == 1) {
+                                                ctx.moveTo(bounds[0], bounds[1] + borders[0].width);
+                                                ctx.lineTo(bounds[0] + bounds[2], bounds[1]);
+                                                ctx.lineTo(bounds[0] + bounds[2], bounds[1] + bounds[3] + borders[2].width);
+                                                ctx.lineTo(bounds[0], bounds[1] + bounds[3]);
+                                            } else if (side == 3) {
+
+                                            } else {
+
+                                            }
+                                            //ctx.rect(bounds[0], bounds[1], bounds[2], bounds[3]);
                                             ctx.clip();
                                             ctx.fillStyle = border.color;
 
-                                            var horizontal = bounds[2] > bounds[3],
-                                                bigSide = bounds[-~!horizontal + 1],
-                                                smallSide = bounds[-~!!horizontal + 1];
-                                            
                                             switch(border.style) {
                                                 case 'dashed':
                                                     break;
