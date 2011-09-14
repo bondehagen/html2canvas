@@ -927,25 +927,21 @@ html2canvas.Parse = function (element, images, opts) {
                 bx = x;
                 by = y;
                 bw = w;
-                bh = h - (borders[2].width);
+                bh = h;
                 switch(borderSide){
-                    case 0:
-                        // top border
+                    case 0: // top border
                         bh = borders[0].width;
                         break;
-                    case 1:
-                        // right border
+                    case 1: // right border
                         bx = x + w - (borders[1].width);
-                        bw = borders[1].width;                              
+                        bw = borders[1].width;
                         break;
-                    case 2:
-                        // bottom border
+                    case 2: // bottom border
                         by = (by + h) - (borders[2].width);
                         bh = borders[2].width;
                         break;
-                    case 3:
-                        // left border
-                        bw = borders[3].width;  
+                    case 3: // left border
+                        bw = borders[3].width;
                         break;
                 }		
                    
@@ -2000,47 +1996,44 @@ html2canvas.Renderer = function(parseQueue, opts){
                                 break;
                                 case 'drawBorders':
                                     var borders = renderItem['arguments'][0];
+
                                     for (var side = 0; side < 4; side++) {
+
                                         var border = borders[side];
+
                                         if (border.color != 'none' && typeof border.bounds !== "undefined") {
-                                            var bounds = border.bounds;
-                                            var horizontal = bounds[2] > bounds[3],
+
+                                            var bounds = border.bounds,
+                                                horizontal = bounds[2] > bounds[3],
                                                 bigSide = bounds[-~!horizontal + 1],
-                                                smallSide = bounds[-~!!horizontal + 1];
+                                                smallSide = bounds[-~horizontal + 1],
+                                                bx = bounds[0],
+                                                by = bounds[1],
+                                                bw = bounds[2],
+                                                bh = bounds[3];
 
                                             // clip the border side
                                             ctx.save();
                                             ctx.beginPath();
-                                            //draw shape
-                                            if (side == 0) {
-                                                ctx.moveTo(bounds[0], bounds[1]);
-                                                ctx.lineTo(bounds[0] + bounds[2], bounds[1]);
-                                                ctx.lineTo(bounds[0] + bounds[2] - borders[1].width, bounds[1] + border.width);
-                                                ctx.lineTo(bounds[0] + borders[3].width, bounds[1] + border.width);
-                                            } else if (side == 1) {
-                                                ctx.moveTo(bounds[0], bounds[1] + borders[0].width);
-                                                ctx.lineTo(bounds[0] + bounds[2], bounds[1]);
-                                                ctx.lineTo(bounds[0] + bounds[2], bounds[1] + bounds[3] + borders[2].width);
-                                                ctx.lineTo(bounds[0], bounds[1] + bounds[3]);
-                                            } else if (side == 3) {
-
-                                            } else {
-
-                                            }
-                                            //ctx.rect(bounds[0], bounds[1], bounds[2], bounds[3]);
+                                            ctx.moveTo(bx + [0, bw, borders[3].width, 0][side], by);
+                                            ctx.lineTo(bx + bw - (side == 2 && borders[1].width || 0), by + [0, bh, 0, borders[0].width][side]);
+                                            ctx.lineTo(bx + [bw - borders[1].width + 1, 0, bw + 1, bw][side], by + [border.width, bh - borders[2].width, bh, bh - borders[2].width][side]);
+                                            ctx.lineTo(bx + (!side && borders[3].width || 0), by + (side == 1 ? borders[0].width : bh));
                                             ctx.clip();
+
                                             ctx.fillStyle = border.color;
 
                                             switch(border.style) {
                                                 case 'dashed':
+                                                    ctx.fillRect.apply(ctx, bounds);
                                                     break;
                                                 case 'dotted':
                                                     var count = 0,
                                                         radius = smallSide / 2, cache = Math.PI*2;
-                                                    for (var x = radius; x < bigSide; x += smallSide) {
+                                                    for (var x = radius; x < bigSide + radius; x += smallSide) {
                                                         if (count % 2 == 0) {
                                                             ctx.beginPath();
-                                                            ctx.arc(bounds[0] + (horizontal ? x : radius), bounds[1] + (horizontal ? radius : x), radius, 0,cache, true);
+                                                            ctx.arc(bx + (horizontal ? x : radius), by + (horizontal ? radius : x), radius, 0,cache, true);
                                                             ctx.closePath();
                                                             ctx.fill();
                                                         }
@@ -2049,14 +2042,11 @@ html2canvas.Renderer = function(parseQueue, opts){
                                                     break;
                                                 case 'double':
                                                     ctx.beginPath();
-                                                    var size = smallSide / 3;
-                                                    if (horizontal) { // must add width height of previous borders
-                                                        ctx.fillRect(bounds[0], bounds[1], bounds[2], size);
-                                                        ctx.fillRect(bounds[0], bounds[1] + (size * 2), bounds[2], size);
-                                                    } else {
-                                                        ctx.fillRect(bounds[0], bounds[1], size, bounds[3]);
-                                                        ctx.fillRect(bounds[0] + (size * 2), bounds[1], size, bounds[3]);
-                                                    }
+                                                    var size = smallSide / 3,
+                                                        dSize = size * 2;
+                                                    !horizontal && (bw = size) && (size = bh);
+                                                    ctx.fillRect(bx, by, bw, size);
+                                                    ctx.fillRect(bx + (!horizontal * dSize), by + (horizontal * dSize), bw, size);
                                                     ctx.closePath();
                                                     break;
                                                 case 'solid':
