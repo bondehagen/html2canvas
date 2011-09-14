@@ -2022,7 +2022,8 @@ html2canvas.Renderer = function(parseQueue, opts){
                                             ctx.clip();
 
                                             ctx.fillStyle = border.color;
-
+                                            ctx.lineWidth = 0;
+                                            
                                             switch(border.style) {
                                                 case 'dashed':
                                                     ctx.fillRect.apply(ctx, bounds);
@@ -2030,15 +2031,23 @@ html2canvas.Renderer = function(parseQueue, opts){
                                                 case 'dotted':
                                                     var count = 0,
                                                         radius = smallSide / 2, cache = Math.PI*2;
-                                                    for (var x = radius; x < bigSide + radius; x += smallSide) {
+                                                    for (var x = radius * 2; x < bigSide + radius; x += smallSide) {
                                                         if (count % 2 == 0) {
                                                             ctx.beginPath();
                                                             ctx.arc(bx + (horizontal ? x : radius), by + (horizontal ? radius : x), radius, 0,cache, true);
-                                                            ctx.closePath();
                                                             ctx.fill();
+                                                            ctx.closePath();
                                                         }
                                                         count++;
                                                     }
+                                                    // border[(side + 1) % 4] -> next
+                                                    // border[(4 + -(side - 1) % 4] -> previous
+                                                    ctx.save();
+                                                    ctx.globalCompositeOperation = 'xor'
+
+                                                    ctx.fillRect(bx, by, borders[(4 + (side - 1)) % 4].width, border.width);
+                                                    ctx.restore();
+                                                    ctx.fillRect(bx, by, borders[(4 + (side - 1)) % 4].width, border.width);
                                                     break;
                                                 case 'double':
                                                     ctx.beginPath();
