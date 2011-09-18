@@ -91,6 +91,103 @@
                 border-bottom: 10px dotted black;
             }
 
+            #corner_radius div {
+                background-color: #464646;
+                float: left;
+                margin-top: 20px;
+                margin-right: 40px;
+                text-align: center;
+                font-size: 13px;
+                color: white;
+                border-top: 5px solid red;
+                border-right: 5px solid black;
+                border-bottom: 5px solid green;
+                border-left: 5px solid #a52a2a;
+            }
+
+            #Example_A {
+                height: 65px;
+                width:160px;
+                -moz-border-radius-bottomright: 50px;
+                -webkit-border-bottom-right-radius:50px;
+                border-bottom-right-radius: 50px;
+            }
+            #Example_B {
+                height: 65px;
+                width:160px;
+                -moz-border-radius-bottomright: 50px 25px;
+                -webkit-border-bottom-right-radius: 50px 25px;
+                border-bottom-right-radius: 50px 25px;
+            }
+            #Example_C {
+                height: 65px;
+                width:160px;
+                -moz-border-radius-bottomright: 25px 50px;
+                -webkit-border-bottom-right-radius:25px 50px;
+                border-bottom-right-radius: 25px 50px;
+            }
+            #Example_D {
+                height: 5em;
+                width: 12em;
+                -moz-border-radius: 1em 4em 1em 4em;
+                -webkit-border-radius: 1em 4em 1em 4em;
+                border-radius: 1em 4em 1em 4em;
+            }
+            #Example_E {
+                height: 65px;
+                width:160px;
+                -moz-border-radius: 25px 10px / 10px 25px;
+                -webkit-border-radius: 25px 10px / 10px 25px;
+                border-radius: 25px 10px / 10px 25px;
+            }
+            #Example_F {
+                height: 70px;
+                width: 70px;
+                -moz-border-radius: 35px;
+                -webkit-border-radius: 35px;
+                border-radius: 35px;
+            }
+
+            #gradient_border {
+                border: 8px solid #000;
+                width: 70px; height: 70px;
+                -moz-border-bottom-colors: #555 #666 #777 #888 #999 #aaa #bbb #ccc;
+                -moz-border-top-colors:    #555 #666 #777 #888 #999 #aaa #bbb #ccc;
+                -moz-border-left-colors:   #555 #666 #777 #888 #999 #aaa #bbb #ccc;
+                -moz-border-right-colors:  #555 #666 #777 #888 #999 #aaa #bbb #ccc;
+                display: inline-block;
+                clear:left;
+                margin-top: 20px;
+            }
+
+            #border-image-1 {
+                margin: 0 30px;
+                width: 270px;
+                padding: 14px;
+                -o-border-image: url('border.png') 27 round round;
+                -icab-border-image: url('border.png') 27 round round;
+                -khtml-border-image: url('border.png') 27 round round;
+                -moz-border-image: url('border.png') 27 round round;
+                -webkit-border-image: url('border.png') 27 round round;
+                border-image: url('border.png') 27 round round;
+                border: double orange 1em;
+                display: inline-block;
+            }
+
+            #border-image-2 {
+                margin: 0 30px;
+                width: 270px;
+                padding: 14px;
+                -o-border-image: url('border.png') 27 stretch stretch;
+                -icab-border-image: url('border.png') 27 stretch stretch;
+                -khtml-border-image: url('border.png') 27 stretch stretch;
+                -moz-border-image: url('border.png') 27 stretch stretch;
+                -webkit-border-image: url('border.png') 27 stretch stretch;
+                border-image: url('border.png') 27 stretch stretch;
+                border: double orange 1em;
+                display: inline-block;
+            }
+
         </style></head>
 
     <body>
@@ -125,5 +222,19 @@
         <div id ="div6"><br />DIV #6<br />position:static;<br /></div>
 
         <div id="div7"><br />Various border styles on same element<br /><br /></div>
+        
+        <div id="corner_radius">
+            <div id="Example_A"></div>
+            <div id="Example_B"></div>
+            <div id="Example_C"></div>
+            <div id="Example_D"></div>
+            <div id="Example_E"></div>
+            <div id="Example_F"></div>
+        </div>
+
+        <div id="gradient_border"></div>
+
+        <div id="border-image-1"></div>
+        <div id="border-image-2"></div>
     </body>
 </html>
