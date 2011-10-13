@@ -947,7 +947,7 @@ html2canvas.Parse = function (element, images, opts) {
                 bx = x;
                 by = y;
                 bw = w;
-                bh = h - (borders[2].width);
+                bh = h;
 
                 switch(borderSide){
                     case 0:

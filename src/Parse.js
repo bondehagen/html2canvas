@@ -572,11 +572,11 @@ html2canvas.Parse = function (element, images, opts) {
     }
     
     function renderBorders(el, ctx, bounds, clip){
-     
+
         /*
-         *  TODO add support for different border-style's than solid   
-         */     
-    
+         *  TODO add support for different border-style's than solid
+         */
+
         var x = bounds.left,
         y = bounds.top,
         w = bounds.width,
@@ -592,28 +592,29 @@ html2canvas.Parse = function (element, images, opts) {
             var borders = [],
             sides = ["Top","Right","Bottom","Left"],
             s;
-        
+
             for (s = 0; s < 4; s+=1){
                 borders.push({
                     width: getCSS(el, 'border' + sides[s] + 'Width', true),
-                    color: getCSS(el, 'border' + sides[s] + 'Color', false)
-                });          
+                    color: getCSS(el, 'border' + sides[s] + 'Color', false),
+                    style: getCSS(el, 'border' + sides[s] + 'Style', false)
+                });
             }
-          
-            return borders; 
-            
-        }(el));    
-        
 
+            return borders;
+
+        }(el));
+
+        var borderData = {};
         for (borderSide = 0; borderSide < 4; borderSide+=1){
             borderData = borders[borderSide];
-                
+
             if (borderData.width>0){
                 bx = x;
                 by = y;
                 bw = w;
-                bh = h - (borders[2].width);
-                
+                bh = h;
+
                 switch(borderSide){
                     case 0:
                         // top border
@@ -622,7 +623,7 @@ html2canvas.Parse = function (element, images, opts) {
                     case 1:
                         // right border
                         bx = x + w - (borders[1].width);
-                        bw = borders[1].width;                              
+                        bw = borders[1].width;
                         break;
                     case 2:
                         // bottom border
@@ -631,32 +632,31 @@ html2canvas.Parse = function (element, images, opts) {
                         break;
                     case 3:
                         // left border
-                        bw = borders[3].width;  
+                        bw = borders[3].width;
                         break;
-                }		
-                   
+                }
+
                 borderBounds = {
                     left:bx,
                     top:by,
                     width: bw,
                     height:bh
                 };
-                   
+
                 if (clip){
                     borderBounds = clipBounds(borderBounds, clip);
                 }
-                   
-                   
-                if (borderBounds.width>0 && borderBounds.height>0){                           
-                    renderRect(ctx, bx, by, borderBounds.width, borderBounds.height, borderData.color);
+
+
+                if (borderBounds.width>0 && borderBounds.height>0){
+                    borderData.bounds = [bx, by, borderBounds.width, borderBounds.height]
+                    //drawStyledLine(ctx, bx, by, borderBounds.width, borderBounds.height, borderData.color, borderData.style || "solid");
                 }
-                
-          
             }
         }
-
+        drawBorders(ctx, borders);
         return borders;
-    
+
     }
     
     
