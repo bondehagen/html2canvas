@@ -3,48 +3,48 @@ html2canvas.canvasContext = function (width, height) {
     this.width = width;
     this.height = height;
     //this.zIndex;
-    
+
     this.fillRect = function(){
         this.storage.push(
         {
             type: "function",
             name: "fillRect",
-            'arguments': arguments            
+            'arguments': arguments
         });
-        
+
     };
-    
-       
-    this.drawImage = function () {     
+
+
+    this.drawImage = function () {
         this.storage.push(
         {
             type: "function",
             name: "drawImage",
-            'arguments': arguments            
+            'arguments': arguments
         });
     };
-    
-    
+
+
     this.fillText = function () {
-        
+
         this.storage.push(
         {
             type: "function",
             name: "fillText",
-            'arguments': arguments            
-        });      
-    };  
-    
-    
+            'arguments': arguments
+        });
+    };
+
+
     this.setVariable = function(variable, value) {
             this.storage.push(
             {
                 type: "variable",
                 name: variable,
-                'arguments': value            
+                'arguments': value
             });
     };
-    
+
     return this;
-    
+
 };
