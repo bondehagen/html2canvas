@@ -2052,31 +2052,42 @@ html2canvas.Renderer = function(parseQueue, opts){
 
                                             ctx.fillStyle = border.color;
                                             ctx.lineWidth = 0;
-                                            
-                                            switch(border.style) {
+
+                                            switch (border.style) {
                                                 case 'dashed':
-                                                    ctx.fillRect.apply(ctx, bounds);
+                                                    var dashSize = smallSide * 2;
+                                                    var amount = Math.ceil((bigSide / dashSize) / 2);
+                                                    if (amount % 2 != 0)
+                                                        amount += 1
+
+                                                    var space = dashSize + (bigSide - (amount * dashSize)) / (amount - 1);
+                                                    for (var x = 0; x <= amount * space; x += space) {
+                                                        ctx.beginPath();
+                                                        if (horizontal)
+                                                            ctx.fillRect(bx + x, by, dashSize, smallSide);
+                                                        else
+                                                            ctx.fillRect(bx, by + x, smallSide, dashSize);
+                                                        ctx.closePath();
+                                                    }
                                                     break;
                                                 case 'dotted':
-                                                    var count = 0,
-                                                        radius = smallSide / 2, cache = Math.PI*2;
-                                                    for (var x = radius * 2; x < bigSide + radius; x += smallSide) {
-                                                        if (count % 2 == 0) {
-                                                            ctx.beginPath();
-                                                            ctx.arc(bx + (horizontal ? x : radius), by + (horizontal ? radius : x), radius, 0,cache, true);
-                                                            ctx.fill();
-                                                            ctx.closePath();
-                                                        }
-                                                        count++;
-                                                    }
-                                                    // border[(side + 1) % 4] -> next
-                                                    // border[(4 + -(side - 1) % 4] -> previous
-                                                    ctx.save();
-                                                    ctx.globalCompositeOperation = 'xor'
+                                                    var cache = Math.PI * 2;
+                                                    var radius = smallSide / 2;
+                                                    var dotSize = smallSide;
+                                                    var amount = Math.ceil((bigSide / dotSize) / 2);
+                                                    if (amount % 2 != 0)
+                                                        amount += 1
 
-                                                    ctx.fillRect(bx, by, borders[(4 + (side - 1)) % 4].width, border.width);
-                                                    ctx.restore();
-                                                    ctx.fillRect(bx, by, borders[(4 + (side - 1)) % 4].width, border.width);
+                                                    var space = dotSize + (bigSide - (amount * (radius * 2))) / (amount - 1);
+                                                    for (var x = radius; x <= amount * space; x += space) {
+                                                        ctx.beginPath();
+                                                        if (horizontal)
+                                                            ctx.arc(bx + x, by + radius, radius, 0, cache, true);
+                                                        else
+                                                            ctx.arc(bx + radius, by + x, radius, 0, cache, true);
+                                                        ctx.fill();
+                                                        ctx.closePath();
+                                                    }
                                                     break;
                                                 case 'double':
                                                     ctx.beginPath();
