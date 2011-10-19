@@ -38,114 +38,152 @@
 </div>
 
 <script type="text/javascript">
-    var margin = 40;
-    var width = 300; // box width + pading
-    var height = 300;
-    var lineWidth = 6;
-    var radius = {
-        top:{
-            left:{
-                a:10, // horizontal
-                b:10 // vertical
-            },
-            right:{
-                a:80,
-                b:180
-            }
-        },
-        bottom:{
-            left:{
-                a:50,
-                b:50
-            },
-            right:{
-                a:20,
-                b:20
-            }
+    function clipRoundedRect(ctx, r, width, height, clipType, lineWidth) {
+        if (clipType == 'stroke') {
+            width += lineWidth * 2;
+            height += lineWidth * 2;
         }
-    };
-    var canvas = document.getElementById('canvas');
-    var ctx = canvas.getContext('2d');
+        var calcRadius = function(value) {
+            switch (clipType) {
+                case 'fill':
+                    return Math.abs(value - lineWidth);
+                case 'stroke':
+                    return Math.abs(value + lineWidth / 2);
+                default:
+                    return Math.abs(value);
+            }
+        };
+        r.top.left.a = calcRadius(r.top.left.a);
+        r.top.left.b = calcRadius(r.top.left.b);
+        r.top.right.a = calcRadius(r.top.right.a);
+        r.top.right.b = calcRadius(r.top.right.b);
+        r.bottom.left.a = calcRadius(r.bottom.left.a);
+        r.bottom.left.b = calcRadius(r.bottom.left.b);
+        r.bottom.right.a = calcRadius(r.bottom.right.a);
+        r.bottom.right.b = calcRadius(r.bottom.right.b);
 
-    ctx.lineWidth = lineWidth;
-    ctx.lineJoin = 'round';
-    ctx.strokeStyle = "red";
-    ctx.fillStyle = "blue";
-    // Set margin
-    ctx.save();
-    ctx.translate(margin + lineWidth, margin + lineWidth);
+        var topWidth = width - r.top.right.a;
+        var rightHeight = height - r.bottom.right.b;
+        var bottomWidth = width - r.bottom.right.a;
+        var leftHeight = height - r.bottom.left.b;
 
-    var topWidth = width - radius.top.right.a;
-    var rightHeight = height - radius.bottom.right.b;
-    var bottomWidth = width - radius.bottom.right.a;
-    var leftHeight = height - radius.bottom.left.b;
+        ctx.beginPath();
+        ctx.moveTo(r.top.left.a / 4, r.top.left.b / 4);
+        ctx.quadraticCurveTo(r.top.left.a / 2, 0, r.top.left.a, 0);
+        ctx.lineTo(topWidth, 0);
+        ctx.quadraticCurveTo(topWidth + r.top.right.a / 2, 0, topWidth + r.top.right.a - r.top.right.a / 4, r.top.right.b / 4);
+        ctx.quadraticCurveTo(topWidth + r.top.right.a, r.top.right.b / 2, topWidth + r.top.right.a, r.top.right.b);
+        ctx.lineTo(bottomWidth + r.bottom.right.a, rightHeight);
+        ctx.quadraticCurveTo(bottomWidth + r.bottom.right.a, rightHeight + (r.bottom.right.b / 2), bottomWidth + r.bottom.right.a - r.bottom.right.a / 4, rightHeight + (r.bottom.right.b - r.bottom.right.b / 4));
+        ctx.quadraticCurveTo(bottomWidth + r.bottom.right.a / 2, rightHeight + r.bottom.right.b, bottomWidth, rightHeight + r.bottom.right.b);
+        ctx.lineTo(r.bottom.left.a, leftHeight + r.bottom.left.b);
+        ctx.quadraticCurveTo(r.bottom.left.a / 2, leftHeight + r.bottom.left.b, r.bottom.left.a / 4, leftHeight + r.bottom.left.b - r.bottom.left.b / 4);
+        ctx.quadraticCurveTo(0, leftHeight + r.bottom.left.b / 2, 0, leftHeight);
+        ctx.lineTo(0, r.top.left.b);
+        ctx.quadraticCurveTo(0, r.top.left.b / 2, r.top.left.a / 4, r.top.left.b / 4);
+        ctx.closePath();
+        ctx.clip();
+    }
 
-    ctx.beginPath();
-    ctx.moveTo(radius.top.left.a / 4, radius.top.left.b / 4);
-    ctx.quadraticCurveTo(radius.top.left.a / 2, 0, radius.top.left.a, 0);
-    ctx.lineTo(topWidth, 0);
-    ctx.quadraticCurveTo(topWidth + radius.top.right.a / 2, 0, topWidth + radius.top.right.a - radius.top.right.a / 4, radius.top.right.b / 4);
-    ctx.quadraticCurveTo(topWidth + radius.top.right.a, radius.top.right.b / 2, topWidth + radius.top.right.a, radius.top.right.b);
-    ctx.lineTo(bottomWidth + radius.bottom.right.a, rightHeight);
-    ctx.quadraticCurveTo(bottomWidth + radius.bottom.right.a, rightHeight + (radius.bottom.right.b / 2), bottomWidth + radius.bottom.right.a - radius.bottom.right.a / 4, rightHeight + (radius.bottom.right.b - radius.bottom.right.b / 4));
-    ctx.quadraticCurveTo(bottomWidth + radius.bottom.right.a / 2, rightHeight + radius.bottom.right.b, bottomWidth, rightHeight + radius.bottom.right.b);
-    ctx.lineTo(radius.bottom.left.a, leftHeight + radius.bottom.left.b);
-    ctx.quadraticCurveTo(radius.bottom.left.a / 2, leftHeight + radius.bottom.left.b, radius.bottom.left.a / 4, leftHeight + radius.bottom.left.b - radius.bottom.left.b / 4);
-    ctx.quadraticCurveTo(0, leftHeight + radius.bottom.left.b / 2, 0, leftHeight);
-    ctx.lineTo(0, radius.top.left.b);
-    ctx.quadraticCurveTo(0, radius.top.left.b / 2, radius.top.left.a / 4, radius.top.left.b / 4);
-    ctx.closePath();
-    ctx.clip();
-    //ctx.stroke();
-    //ctx.fill();
+    function strokeCorners(ctx, radius, width, height, lineWidth) {
+        var topWidth = width - radius.top.right.a + lineWidth;
+        var rightHeight = height - radius.bottom.right.b + lineWidth;
+        var bottomWidth = width - radius.bottom.right.a + lineWidth;
+        var leftHeight = height - radius.bottom.left.b + lineWidth;
+        // top
+        ctx.strokeStyle = "red";
+        ctx.beginPath();
+        ctx.moveTo(radius.top.left.a / 4, radius.top.left.b / 4);
+        ctx.quadraticCurveTo(radius.top.left.a / 2, 0, radius.top.left.a, 0);
+        ctx.moveTo(topWidth, 0);
+        ctx.quadraticCurveTo(topWidth + radius.top.right.a / 2, 0, topWidth + radius.top.right.a - radius.top.right.a / 4, radius.top.right.b / 4);
+        ctx.stroke();
 
-    ctx.fillStyle = "black";
-    // Draw helper rect to measure size
+        // right
+        ctx.strokeStyle = "yellow";
+        ctx.beginPath();
+        ctx.moveTo(topWidth + radius.top.right.a - radius.top.right.a / 4, radius.top.right.b / 4);
+        ctx.quadraticCurveTo(topWidth + radius.top.right.a, radius.top.right.b / 2, topWidth + radius.top.right.a, radius.top.right.b);
+        ctx.moveTo(bottomWidth + radius.bottom.right.a, rightHeight);
+        ctx.quadraticCurveTo(bottomWidth + radius.bottom.right.a, rightHeight + (radius.bottom.right.b / 2), bottomWidth + radius.bottom.right.a - radius.bottom.right.a / 4, rightHeight + (radius.bottom.right.b - radius.bottom.right.b / 4));
+        ctx.stroke();
 
-    ctx.fillRect(0, 0, width*2, height*2);
-    ctx.restore();
+        // bottom
+        ctx.strokeStyle = "green";
+        ctx.beginPath();
+        ctx.moveTo(bottomWidth + radius.bottom.right.a - radius.bottom.right.a / 4, rightHeight + (radius.bottom.right.b - radius.bottom.right.b / 4));
+        ctx.quadraticCurveTo(bottomWidth + radius.bottom.right.a / 2, rightHeight + radius.bottom.right.b, bottomWidth, rightHeight + radius.bottom.right.b);
+        ctx.moveTo(radius.bottom.left.a, leftHeight + radius.bottom.left.b);
+        ctx.quadraticCurveTo(radius.bottom.left.a / 2, leftHeight + radius.bottom.left.b, radius.bottom.left.a / 4, leftHeight + radius.bottom.left.b - radius.bottom.left.b / 4);
+        ctx.stroke();
 
-    ctx.translate(margin + lineWidth/2, margin + lineWidth/2)
-    topWidth = width - radius.top.right.a + lineWidth;
-    rightHeight = height - radius.bottom.right.b + lineWidth;
-    bottomWidth = width - radius.bottom.right.a + lineWidth;
-    leftHeight = height - radius.bottom.left.b + lineWidth;
+        // left
+        ctx.strokeStyle = "blue";
+        ctx.beginPath();
+        ctx.moveTo(radius.bottom.left.a / 4, leftHeight + radius.bottom.left.b - radius.bottom.left.b / 4);
+        ctx.quadraticCurveTo(0, leftHeight + radius.bottom.left.b / 2, 0, leftHeight);
+        ctx.moveTo(0, radius.top.left.b);
+        ctx.quadraticCurveTo(0, radius.top.left.b / 2, radius.top.left.a / 4, radius.top.left.b / 4);
+        ctx.stroke();
+    }
 
-    // top
-    ctx.strokeStyle = "red";
-    ctx.beginPath();
-    ctx.moveTo(radius.top.left.a / 4, radius.top.left.b / 4);
-    ctx.quadraticCurveTo(radius.top.left.a / 2, 0, radius.top.left.a, 0);
-    ctx.lineTo(topWidth, 0);
-    ctx.quadraticCurveTo(topWidth + radius.top.right.a / 2, 0, topWidth + radius.top.right.a - radius.top.right.a / 4, radius.top.right.b / 4);
-    ctx.stroke();
+    (function() {
+        var margin = 40;
+        var width = 300; // box width + pading
+        var height = 300;
+        var lineWidth = 6;
+        var Radius = function() {
+            return {top:{
+                left:{
+                    a:10, // horizontal
+                    b:10 // vertical
+                },
+                right:{
+                    a:80,
+                    b:180
+                }
+            },
+                bottom:{
+                    left:{
+                        a:50,
+                        b:50
+                    },
+                    right:{
+                        a:20,
+                        b:20
+                    }
+                }}
+        };
 
-    // right
-    ctx.strokeStyle = "yellow";
-    ctx.beginPath();
-    ctx.moveTo(topWidth + radius.top.right.a - radius.top.right.a / 4, radius.top.right.b / 4);
-    ctx.quadraticCurveTo(topWidth + radius.top.right.a, radius.top.right.b / 2, topWidth + radius.top.right.a, radius.top.right.b);
-    ctx.lineTo(bottomWidth + radius.bottom.right.a, rightHeight);
-    ctx.quadraticCurveTo(bottomWidth + radius.bottom.right.a, rightHeight + (radius.bottom.right.b / 2), bottomWidth + radius.bottom.right.a - radius.bottom.right.a / 4, rightHeight + (radius.bottom.right.b - radius.bottom.right.b / 4));
-    ctx.stroke();
+        var canvas = document.getElementById('canvas');
+        var ctx = canvas.getContext('2d');
 
-    // bottom
-    ctx.strokeStyle = "green";
-    ctx.beginPath();
-    ctx.moveTo(bottomWidth + radius.bottom.right.a - radius.bottom.right.a / 4, rightHeight + (radius.bottom.right.b - radius.bottom.right.b / 4));
-    ctx.quadraticCurveTo(bottomWidth + radius.bottom.right.a / 2, rightHeight + radius.bottom.right.b, bottomWidth, rightHeight + radius.bottom.right.b);
-    ctx.lineTo(radius.bottom.left.a, leftHeight + radius.bottom.left.b);
-    ctx.quadraticCurveTo(radius.bottom.left.a / 2, leftHeight + radius.bottom.left.b, radius.bottom.left.a / 4, leftHeight + radius.bottom.left.b - radius.bottom.left.b / 4);
-    ctx.stroke();
+        ctx.lineWidth = lineWidth;
+        ctx.lineJoin = 'round';
+        ctx.strokeStyle = "red";
+        ctx.fillStyle = "blue";
 
-    // left
-    ctx.strokeStyle = "blue";
-    ctx.beginPath();
-    ctx.moveTo(radius.bottom.left.a / 4, leftHeight + radius.bottom.left.b - radius.bottom.left.b / 4);
-    ctx.quadraticCurveTo(0, leftHeight + radius.bottom.left.b / 2, 0, leftHeight);
-    ctx.lineTo(0, radius.top.left.b);
-    ctx.quadraticCurveTo(0, radius.top.left.b / 2, radius.top.left.a / 4, radius.top.left.b / 4);
-    ctx.stroke();
+        // Clip background
+        ctx.save();
+        ctx.translate(margin + lineWidth, margin + lineWidth);
+        clipRoundedRect(ctx, new Radius(), width, height, 'fill', lineWidth);
+
+        // Draw background
+        ctx.fillStyle = "black";
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(margin, margin);
+
+        clipRoundedRect(ctx, new Radius(), width, height, 'stroke', lineWidth);
+
+        ctx.translate(lineWidth / 2, lineWidth / 2);
+        ctx.strokeRect(0, 0, width + lineWidth, height + lineWidth);
+
+        strokeCorners(ctx, new Radius(), width, height, lineWidth);
+        ctx.restore();
+    })();
 </script>
 </body>
 
