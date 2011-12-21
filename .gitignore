@@ -6,9 +6,10 @@
 /tests/flashcanvas.html
 /lib/
 /dist/
-/build/tmp.js
-/build/html2canvas.min.js
+/build/*.js
 index.html
 image.jpg
 screenshots.html
 screenshots_local.html
+/.project
+/.settings/
