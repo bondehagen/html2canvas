@@ -928,10 +928,13 @@ html2canvas.Parse = function (element, images, opts) {
             s;
 
             for (s = 0; s < 4; s+=1){
+                var h = (s<2) ? sides[0] : sides[2];
+                var v = (s % 2 == 0) ? sides[1] : sides[3];
                 borders.push({
                     width: getCSS(el, 'border' + sides[s] + 'Width', true),
                     color: getCSS(el, 'border' + sides[s] + 'Color', false),
-                    style: getCSS(el, 'border' + sides[s] + 'Style', false)
+                    style: getCSS(el, 'border' + sides[s] + 'Style', false),
+                    radius: getCSS(el, 'border' + h + v + 'Radius', false)
                 });
             }
 
@@ -1969,11 +1972,99 @@ html2canvas.Renderer = function(parseQueue, opts){
         }
 
     }
-
+    
     function canvasRenderer(zStack){
+    function clipRoundedRect(ctx, x, y, r, width, height, clipType, lineWidth) {
+        if (clipType == 'stroke') {
+            width += lineWidth * 2;
+            height += lineWidth * 2;
+        }
+        var calcRadius = function(value) {
+            switch (clipType) {
+                case 'fill':
+                    return Math.abs(value - lineWidth);
+                case 'stroke':
+                    return Math.abs(value + lineWidth / 2);
+                default:
+                    return Math.abs(value);
+            }
+        };
+        r.top.left.a = calcRadius(r.top.left.a);
+        r.top.left.b = calcRadius(r.top.left.b);
+        r.top.right.a = calcRadius(r.top.right.a);
+        r.top.right.b = calcRadius(r.top.right.b);
+        r.bottom.left.a = calcRadius(r.bottom.left.a);
+        r.bottom.left.b = calcRadius(r.bottom.left.b);
+        r.bottom.right.a = calcRadius(r.bottom.right.a);
+        r.bottom.right.b = calcRadius(r.bottom.right.b);
 
+        var topWidth = width - r.top.right.a;
+        var rightHeight = height - r.bottom.right.b;
+        var bottomWidth = width - r.bottom.right.a;
+        var leftHeight = height - r.bottom.left.b;
+
+        ctx.beginPath();
+        ctx.moveTo(x + r.top.left.a / 4, y + r.top.left.b / 4);
+        ctx.quadraticCurveTo(x + r.top.left.a / 2, y, x + r.top.left.a, y);
+        ctx.lineTo(x + topWidth, y);
+        ctx.quadraticCurveTo(x + topWidth + r.top.right.a / 2, y, x + topWidth + r.top.right.a - r.top.right.a / 4, y + r.top.right.b / 4);
+        ctx.quadraticCurveTo(x + topWidth + r.top.right.a, y + r.top.right.b / 2, x + topWidth + r.top.right.a, y + r.top.right.b);
+        ctx.lineTo(x + bottomWidth + r.bottom.right.a, y + rightHeight);
+        ctx.quadraticCurveTo(x + bottomWidth + r.bottom.right.a, y + rightHeight + (r.bottom.right.b / 2), x + bottomWidth + r.bottom.right.a - r.bottom.right.a / 4, y + rightHeight + (r.bottom.right.b - r.bottom.right.b / 4));
+        ctx.quadraticCurveTo(x + bottomWidth + r.bottom.right.a / 2, y + rightHeight + r.bottom.right.b, x + bottomWidth, y + rightHeight + r.bottom.right.b);
+        ctx.lineTo(x + r.bottom.left.a, y + leftHeight + r.bottom.left.b);
+        ctx.quadraticCurveTo(x + r.bottom.left.a / 2, y + leftHeight + r.bottom.left.b, x + r.bottom.left.a / 4, y + leftHeight + r.bottom.left.b - r.bottom.left.b / 4);
+        ctx.quadraticCurveTo(x, y + leftHeight + r.bottom.left.b / 2, x, y + leftHeight);
+        ctx.lineTo(x, y + r.top.left.b);
+        ctx.quadraticCurveTo(x, y + r.top.left.b / 2, x + r.top.left.a / 4, y + r.top.left.b / 4);
+        ctx.closePath();
+        ctx.clip();
+    }
+
+    function strokeCorners(ctx, x, y, radius, width, height, lineWidth, colors) {
+        var topWidth = width - radius.top.right.a + lineWidth;
+        var rightHeight = height - radius.bottom.right.b + lineWidth;
+        var bottomWidth = width - radius.bottom.right.a + lineWidth;
+        var leftHeight = height - radius.bottom.left.b + lineWidth;
+        // top
+        ctx.strokeStyle = colors[0];
+        ctx.beginPath();
+        ctx.moveTo(x + radius.top.left.a / 4, y + radius.top.left.b / 4);
+        ctx.quadraticCurveTo(x + radius.top.left.a / 2, y, x + radius.top.left.a, y);
+        ctx.moveTo(x + topWidth, y);
+        ctx.quadraticCurveTo(x + topWidth + radius.top.right.a / 2, y, x + topWidth + radius.top.right.a - radius.top.right.a / 4, y + radius.top.right.b / 4);
+        ctx.stroke();
+
+        // right
+        ctx.strokeStyle = colors[1];
+        ctx.beginPath();
+        ctx.moveTo(x + topWidth + radius.top.right.a - radius.top.right.a / 4, y + radius.top.right.b / 4);
+        ctx.quadraticCurveTo(x + topWidth + radius.top.right.a, y + radius.top.right.b / 2, x + topWidth + radius.top.right.a, y + radius.top.right.b);
+        ctx.moveTo(x + bottomWidth + radius.bottom.right.a, y + rightHeight);
+        ctx.quadraticCurveTo(x + bottomWidth + radius.bottom.right.a, y + rightHeight + (radius.bottom.right.b / 2), x + bottomWidth + radius.bottom.right.a - radius.bottom.right.a / 4, y + rightHeight + (radius.bottom.right.b - radius.bottom.right.b / 4));
+        ctx.stroke();
+
+        // bottom
+        ctx.strokeStyle = colors[2];
+        ctx.beginPath();
+        ctx.moveTo(x + bottomWidth + radius.bottom.right.a - radius.bottom.right.a / 4, y + rightHeight + (radius.bottom.right.b - radius.bottom.right.b / 4));
+        ctx.quadraticCurveTo(x + bottomWidth + radius.bottom.right.a / 2, y + rightHeight + radius.bottom.right.b, x + bottomWidth, y + rightHeight + radius.bottom.right.b);
+        ctx.moveTo(x + radius.bottom.left.a, y + leftHeight + radius.bottom.left.b);
+        ctx.quadraticCurveTo(x + radius.bottom.left.a / 2, y + leftHeight + radius.bottom.left.b, x + radius.bottom.left.a / 4, y + leftHeight + radius.bottom.left.b - radius.bottom.left.b / 4);
+        ctx.stroke();
+
+        // left
+        ctx.strokeStyle = colors[3];
+        ctx.beginPath();
+        ctx.moveTo(x + radius.bottom.left.a / 4, y + leftHeight + radius.bottom.left.b - radius.bottom.left.b / 4);
+        ctx.quadraticCurveTo(x, y + leftHeight + radius.bottom.left.b / 2, x, y + leftHeight);
+        ctx.moveTo(x, y + radius.top.left.b);
+        ctx.quadraticCurveTo(x, y + radius.top.left.b / 2, x + radius.top.left.a / 4, y + radius.top.left.b / 4);
+        ctx.stroke();
+    }
         sortZ(zStack.zIndex);
-
+        function drawBorders_old(ctx, renderItem) {
+        }
 
         var ctx = canvas.getContext("2d"),
         storageContext,
@@ -1982,10 +2073,8 @@ html2canvas.Renderer = function(parseQueue, opts){
         a,
         storageLen,
         renderItem;
-
         canvas.width = Math.max(zStack.ctx.width, options.width);
         canvas.height = Math.max(zStack.ctx.height, options.height);
-
 
         for (i = 0, queueLen = queue.length; i < queueLen; i+=1){
 
@@ -1993,141 +2082,211 @@ html2canvas.Renderer = function(parseQueue, opts){
             storageContext.canvasPosition = storageContext.canvasPosition || {};
 
             //this.canvasRenderContext(storageContext,parentctx);
-
+console.log('---');
             // set common settings for canvas
             ctx.textBaseline = "bottom";
-
+ console.log(storageContext);
             if (storageContext.clip){
                 ctx.save();
                 ctx.beginPath();
-                // console.log(storageContext);
                 ctx.rect(storageContext.clip.left, storageContext.clip.top, storageContext.clip.width, storageContext.clip.height);
                 ctx.clip();
-
             }
 
             if (storageContext.ctx.storage){
 
-                for (a = 0, storageLen = storageContext.ctx.storage.length; a < storageLen; a+=1){
-
+                var Radius;
+                var lineWidth = 6;
+                var bx = 0;
+                var by = 0;
+                var bw = 0;
+                var bh = 0;
+                for (a = 0,storageLen = storageContext.ctx.storage.length; a < storageLen; a += 1) {
                     renderItem = storageContext.ctx.storage[a];
 
+                    if (renderItem.type == "function") {
+                        if (renderItem.name == 'drawBorders') {
 
-
-                    switch(renderItem.type){
-                        case "variable":
-                            ctx[renderItem.name] = renderItem['arguments'];
-                            break;
-                        case "function":
-                            switch(renderItem.name) {
-                                case 'fillRect':
-                                    ctx.fillRect.apply(ctx, renderItem['arguments']);
-                                break;
-                                case 'drawBorders':
-                                    var borders = renderItem['arguments'][0];
-
-                                    for (var side = 0; side < 4; side++) {
-
-                                        var border = borders[side];
-
-                                        if (border.color != 'none' && typeof border.bounds !== "undefined") {
-
-                                            var bounds = border.bounds,
-                                                horizontal = bounds[2] > bounds[3],
-                                                bigSide = bounds[-~!horizontal + 1],
-                                                smallSide = bounds[-~horizontal + 1],
-                                                bx = bounds[0],
-                                                by = bounds[1],
-                                                bw = bounds[2],
-                                                bh = bounds[3];
-
-                                            // clip the border side
-                                            ctx.save();
-                                            ctx.beginPath();
-                                            ctx.moveTo(bx + [0, bw, borders[3].width, 0][side], by);
-                                            ctx.lineTo(bx + bw - (side == 2 && borders[1].width || 0), by + [0, bh, 0, borders[0].width][side]);
-                                            ctx.lineTo(bx + [bw - borders[1].width + 1, 0, bw + 1, bw][side], by + [border.width, bh - borders[2].width, bh, bh - borders[2].width][side]);
-                                            ctx.lineTo(bx + (!side && borders[3].width || 0), by + (side == 1 ? borders[0].width : bh));
-                                            ctx.clip();
-
-                                            ctx.fillStyle = border.color;
-                                            ctx.lineWidth = 0;
-
-                                            switch (border.style) {
-                                                case 'dashed':
-                                                    var dashSize = smallSide * 2;
-                                                    var amount = Math.ceil((bigSide / dashSize) / 2);
-                                                    if (amount % 2 != 0)
-                                                        amount += 1
-
-                                                    var space = dashSize + (bigSide - (amount * dashSize)) / (amount - 1);
-                                                    for (var x = 0; x <= amount * space; x += space) {
-                                                        ctx.beginPath();
-                                                        if (horizontal)
-                                                            ctx.fillRect(bx + x, by, dashSize, smallSide);
-                                                        else
-                                                            ctx.fillRect(bx, by + x, smallSide, dashSize);
-                                                        ctx.closePath();
-                                                    }
-                                                    break;
-                                                case 'dotted':
-                                                    var cache = Math.PI * 2;
-                                                    var radius = smallSide / 2;
-                                                    var dotSize = smallSide;
-                                                    var amount = Math.ceil((bigSide / dotSize) / 2);
-                                                    if (amount % 2 != 0)
-                                                        amount += 1
-
-                                                    var space = dotSize + (bigSide - (amount * (radius * 2))) / (amount - 1);
-                                                    for (var x = radius; x <= amount * space; x += space) {
-                                                        ctx.beginPath();
-                                                        if (horizontal)
-                                                            ctx.arc(bx + x, by + radius, radius, 0, cache, true);
-                                                        else
-                                                            ctx.arc(bx + radius, by + x, radius, 0, cache, true);
-                                                        ctx.fill();
-                                                        ctx.closePath();
-                                                    }
-                                                    break;
-                                                case 'double':
-                                                    ctx.beginPath();
-                                                    var size = smallSide / 3,
-                                                        dSize = size * 2;
-                                                    !horizontal && (bw = size) && (size = bh);
-                                                    ctx.fillRect(bx, by, bw, size);
-                                                    ctx.fillRect(bx + (!horizontal * dSize), by + (horizontal * dSize), bw, size);
-                                                    ctx.closePath();
-                                                    break;
-                                                case 'solid':
-                                                    ctx.fillRect.apply(ctx, bounds);
-                                                    break;
-                                                default:
-                                                case 'none':
-                                                    break;
+                            var borders = renderItem['arguments'][0];
+                            var border = borders[0];
+                            if (border.color != 'none' && typeof border.bounds !== "undefined") {
+                                var bounds = border.bounds;
+                                bx = bounds[0];
+                                by = bounds[1];
+                                bw = bounds[2];
+                                bh = bounds[3];
+                                Radius = function() {
+                                    return {
+                                        top:{
+                                            left:{
+                                                a:borders[0].radius.replace('px', ''), // horizontal
+                                                b:borders[0].radius.replace('px', '') // vertical
+                                            },
+                                            right:{
+                                                a:borders[0].radius.replace('px', ''),
+                                                b:borders[0].radius.replace('px', '')
                                             }
-
-                                            ctx.closePath();
-                                            ctx.fill();
-                                            ctx.restore();
-                                        }
-                                    }
-                                    break;
-                                case 'fillText':
-                                    ctx.fillText(renderItem['arguments'][0],renderItem['arguments'][1],renderItem['arguments'][2]);
-                                break;
-                                case 'drawImage':
-                                    if (renderItem['arguments'][8] > 0 && renderItem['arguments'][7]){
-                                        ctx.drawImage.apply(ctx, renderItem['arguments']);
-                                    }
-                                break;
+                                        },
+                                        bottom:{
+                                            left:{
+                                                a:borders[0].radius.replace('px', ''),
+                                                b:borders[0].radius.replace('px', '')
+                                            },
+                                            right:{
+                                                a:borders[0].radius.replace('px', ''),
+                                                b:borders[0].radius.replace('px', '')
+                                            }
+                                        }};
+                                };
                             }
-                            break;
-                        default:
-
+                        }
                     }
 
                 }
 
+        // Clip background
+                if(Radius){
+        ctx.save();
+        clipRoundedRect(ctx, bx + lineWidth, by + lineWidth, new Radius(), bw, bh, 'fill', lineWidth);
+                }
+
+                for (a = 0, storageLen = storageContext.ctx.storage.length; a < storageLen; a += 1) {
+                    renderItem = storageContext.ctx.storage[a];
+                    if (renderItem.type == "variable") {
+                        ctx[renderItem.name] = renderItem['arguments'];
+                    }
+                    else if (renderItem.type == "function") {
+                        switch (renderItem.name) {
+                            case 'fillRect':
+                                ctx.fillRect.apply(ctx, renderItem['arguments']);
+                                break;
+                            case 'fillText':
+                                ctx.fillText(renderItem['arguments'][0], renderItem['arguments'][1], renderItem['arguments'][2]);
+                                break;
+                            case 'drawImage':
+                                if (renderItem['arguments'][8] > 0 && renderItem['arguments'][7]) {
+                                    ctx.drawImage.apply(ctx, renderItem['arguments']);
+                                }
+                                break;
+                        }
+                    }
+                }
+if(Radius){
+                ctx.restore();
+
+                // Clip border
+                ctx.save();
+                //clipRoundedRect(ctx, bx, by, new Radius(), bw, bh, 'stroke', lineWidth);
+
+                // Draw border
+                //drawBorders(ctx, bw, bh, lineWidth, ['red','red','red','red']);
+
+}
+
+                for (a = 0,storageLen = storageContext.ctx.storage.length; a < storageLen; a += 1) {
+                    renderItem = storageContext.ctx.storage[a];
+
+                    if (renderItem.type == "function") {
+                        if (renderItem.name == 'drawBorders') {
+                            var borders = renderItem['arguments'][0];
+                            for (var side = 0; side < 4; side++) {
+
+                                var border = borders[side];
+
+                                if (border.color != 'none' && typeof border.bounds !== "undefined") {
+
+                                    var bounds = border.bounds,
+                                        horizontal = bounds[2] > bounds[3],
+                                        bigSide = bounds[-~!horizontal + 1],
+                                        smallSide = bounds[-~horizontal + 1],
+                                        bx = bounds[0],
+                                        by = bounds[1],
+                                        bw = bounds[2],
+                                        bh = bounds[3];
+
+                                    // clip the border side
+                                    ctx.save();
+                                    ctx.beginPath();
+                                    ctx.moveTo(bx + [0, bw, borders[3].width, 0][side], by);
+                                    ctx.lineTo(bx + bw - (side == 2 && borders[1].width || 0), by + [0, bh, 0, borders[0].width][side]);
+                                    ctx.lineTo(bx + [bw - borders[1].width + 1, 0, bw + 1, bw][side], by + [border.width, bh - borders[2].width, bh, bh - borders[2].width][side]);
+                                    ctx.lineTo(bx + (!side && borders[3].width || 0), by + (side == 1 ? borders[0].width : bh));
+                                    ctx.clip();
+
+                                    ctx.fillStyle = border.color;
+                                    ctx.lineWidth = 0;
+
+                                    switch (border.style) {
+                                        case 'dashed':
+                                            var dashSize = smallSide * 2;
+                                            var amount = Math.ceil((bigSide / dashSize) / 2);
+                                            if (amount % 2 != 0)
+                                                amount += 1
+
+                                            var space = dashSize + (bigSide - (amount * dashSize)) / (amount - 1);
+                                            for (var x = 0; x <= amount * space; x += space) {
+                                                ctx.beginPath();
+                                                if (horizontal)
+                                                    ctx.fillRect(bx + x, by, dashSize, smallSide);
+                                                else
+                                                    ctx.fillRect(bx, by + x, smallSide, dashSize);
+                                                ctx.closePath();
+                                            }
+                                            break;
+                                        case 'dotted':
+                                            var cache = Math.PI * 2;
+                                            var radius = smallSide / 2;
+                                            var dotSize = smallSide;
+                                            var amount = Math.ceil((bigSide / dotSize) / 2);
+                                            if (amount % 2 != 0)
+                                                amount += 1
+
+                                            var space = dotSize + (bigSide - (amount * (radius * 2))) / (amount - 1);
+                                            for (var x = radius; x <= amount * space; x += space) {
+                                                ctx.beginPath();
+                                                if (horizontal)
+                                                    ctx.arc(bx + x, by + radius, radius, 0, cache, true);
+                                                else
+                                                    ctx.arc(bx + radius, by + x, radius, 0, cache, true);
+                                                ctx.fill();
+                                                ctx.closePath();
+                                            }
+                                            break;
+                                        case 'double':
+                                            ctx.beginPath();
+                                            var size = smallSide / 3,
+                                                dSize = size * 2;
+                                            !horizontal && (bw = size) && (size = bh);
+                                            ctx.fillRect(bx, by, bw, size);
+                                            ctx.fillRect(bx + (!horizontal * dSize), by + (horizontal * dSize), bw, size);
+                                            ctx.closePath();
+                                            break;
+                                        case 'solid':
+                                            ctx.fillRect.apply(ctx, bounds);
+                                            break;
+                                        default:
+                                        case 'none':
+                                            break;
+                                    }
+
+                                    ctx.closePath();
+                                    ctx.fill();
+                                    ctx.restore();
+                                }
+                                /*if (border.radius !== '0px') {
+                                 console.log(border.radius);
+                                 var sidearr = ['tr', 'tl', 'br', 'bl'];
+
+                                 drawCorner(ctx, border.radius.replace('px', ''), sidearr[side], 'rgba(0,0,0,0)', 5, border.color, border.style, bx + 120, by - 45);
+                                 }*/
+                            }
+                        }
+                    }
+                }
+if(Radius){
+                  strokeCorners(ctx, bx +lineWidth / 2, by + lineWidth / 2, new Radius(), bw, bh, lineWidth, ['red','red','red','red']);
+                ctx.restore();
+}
             }
             if (storageContext.clip){
                 ctx.restore();
