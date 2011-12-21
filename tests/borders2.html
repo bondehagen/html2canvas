@@ -1,0 +1,67 @@
+<!--
+* @author Niklas von Hertzen <niklas at hertzen.com>
+* @created 15.7.2011 
+* @website http://hertzen.com
+-->
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>border tests</title>
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+        <link href="#" type="text/css" rel="stylesheet"> 
+        <script type="text/javascript" src="../external/flashcanvas/flashcanvas.js"></script>
+        <script type="text/javascript" src="../external/jquery-1.6.2.min.js"></script>
+        <script type="text/javascript" src="../build/html2canvas.js"></script>
+        <script type="text/javascript" src="../build/jquery.plugin.html2canvas.js"></script>
+        <script type="text/javascript">
+            $(window).ready(function() {
+          
+                $('body').html2canvas({
+                    logging:true
+                });
+            });
+        </script>
+
+        <style type="text/css">
+
+            div { font: 12px Arial; }
+
+            #corner_radius div {
+                background-color: #464646;
+                float: left;
+                margin-top: 20px;
+                margin-right: 40px;
+                text-align: center;
+                font-size: 13px;
+                color: white;
+                border-top: 5px solid red;
+                border-right: 5px solid black;
+                border-bottom: 5px solid green;
+                border-left: 5px solid #a52a2a;
+            }
+
+            #Example_A {
+                height: 65px;
+                width:160px;
+                -moz-border-radius-bottomright: 50px;
+                -webkit-border-bottom-right-radius:50px;
+                border-bottom-right-radius: 50px;
+            }
+            #Example_B {
+                height: 65px;
+                width:160px;
+                -moz-border-radius-bottomright: 50px 25px;
+                -webkit-border-bottom-right-radius: 50px 25px;
+                border-bottom-right-radius: 50px 25px;
+            }
+           
+        </style>
+    </head>
+
+    <body>
+        <div id="corner_radius">
+            <div id="Example_A"></div>
+            <div id="Example_B"></div>
+        </div>
+    </body>
+</html>
