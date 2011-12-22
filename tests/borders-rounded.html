@@ -1,0 +1,35 @@
+<!--
+* @author Anders Bondehagen <anders at bondehagen.com>
+* @created 22.12.2011
+-->
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>border tests rounded corners</title>
+        <script type="text/javascript" src="test.js"></script>
+        <style type="text/css">
+
+            #div {
+                background: brown /*url(image.jpg) repeat-x*/;
+                margin: 40px;
+                height: 300px;
+                width: 300px;
+                border: 6px solid;
+                border-color: red yellow green blue;
+                border-style: dotted dashed solid double;
+                border-radius: 50px 50px;
+                border-top-left-radius: 10px 10px;
+                border-top-right-radius: 80px 180px;
+                border-bottom-left-radius: 50px 50px;
+                border-bottom-right-radius: 20px 20px;
+            }
+
+        </style>
+    </head>
+
+    <body>
+
+        <div id="div"><!--Rounded corners =)--></div>
+
+    </body>
+</html>

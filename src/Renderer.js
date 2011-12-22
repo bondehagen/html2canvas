@@ -120,46 +120,55 @@ console.dir(arguments);
         }
 
         function strokeCorners(ctx, x, y, radius, width, height, lineWidth, colors) {
-            console.dir(arguments)
             var r = radius;
-            var topWidth = width - r.top.right.h + lineWidth;
-            var rightHeight = height - r.bottom.right.v + lineWidth;
-            var bottomWidth = width - r.bottom.right.h + lineWidth;
-            var leftHeight = height - r.bottom.left.v + lineWidth;
+            var tlh = r.top.left.h;
+            var tlv = r.top.left.v;
+            var trh = r.top.right.h;
+            var trb = r.top.right.v;
+            var blh = r.bottom.left.h;
+            var blv = r.bottom.left.v;
+            var brv = r.bottom.right.v;
+            var brh = r.bottom.right.h;
+
+            var topWidth = width - trh + lineWidth;
+            var rightHeight = height - brv + lineWidth;
+            var bottomWidth = width - brh + lineWidth;
+            var leftHeight = height - blv + lineWidth;
+
             // top
             ctx.strokeStyle = colors[0];
             ctx.beginPath();
-            ctx.moveTo(x + r.top.left.h / 4, y + r.top.left.v / 4);
-            ctx.quadraticCurveTo(x + r.top.left.h / 2, y, x + r.top.left.h, y);
+            ctx.moveTo(x + tlh / 4, y + tlv / 4);
+            ctx.quadraticCurveTo(x + tlh / 2, y, x + tlh, y);
             ctx.moveTo(x + topWidth, y);
-            ctx.quadraticCurveTo(x + topWidth + r.top.right.h / 2, y, x + topWidth + r.top.right.h - r.top.right.h / 4, y + r.top.right.v / 4);
+            ctx.quadraticCurveTo(x + topWidth + trh / 2, y, x + topWidth + trh - trh / 4, y + trb / 4);
             ctx.stroke();
 
             // right
             ctx.strokeStyle = colors[1];
             ctx.beginPath();
-            ctx.moveTo(x + topWidth + r.top.right.h - r.top.right.h / 4, y + r.top.right.v / 4);
-            ctx.quadraticCurveTo(x + topWidth + r.top.right.h, y + r.top.right.v / 2, x + topWidth + r.top.right.h, y + r.top.right.v);
-            ctx.moveTo(x + bottomWidth + r.bottom.right.h, y + rightHeight);
-            ctx.quadraticCurveTo(x + bottomWidth + r.bottom.right.h, y + rightHeight + (r.bottom.right.v / 2), x + bottomWidth + r.bottom.right.h - r.bottom.right.h / 4, y + rightHeight + (r.bottom.right.v - r.bottom.right.v / 4));
+            ctx.moveTo(x + topWidth + trh - trh / 4, y + trb / 4);
+            ctx.quadraticCurveTo(x + topWidth + trh, y + trb / 2, x + topWidth + trh, y + trb);
+            ctx.moveTo(x + bottomWidth + brh, y + rightHeight);
+            ctx.quadraticCurveTo(x + bottomWidth + brh, y + rightHeight + (brv / 2), x + bottomWidth + brh - brh / 4, y + rightHeight + (brv - brv / 4));
             ctx.stroke();
 
             // bottom
             ctx.strokeStyle = colors[2];
             ctx.beginPath();
-            ctx.moveTo(x + bottomWidth + r.bottom.right.h - r.bottom.right.h / 4, y + rightHeight + (r.bottom.right.v - r.bottom.right.v / 4));
-            ctx.quadraticCurveTo(x + bottomWidth + r.bottom.right.h / 2, y + rightHeight + r.bottom.right.v, x + bottomWidth, y + rightHeight + r.bottom.right.v);
-            ctx.moveTo(x + r.bottom.left.h, y + leftHeight + r.bottom.left.v);
-            ctx.quadraticCurveTo(x + r.bottom.left.h / 2, y + leftHeight + r.bottom.left.v, x + r.bottom.left.h / 4, y + leftHeight + r.bottom.left.v - r.bottom.left.v / 4);
+            ctx.moveTo(x + bottomWidth + brh - brh / 4, y + rightHeight + (brv - brv / 4));
+            ctx.quadraticCurveTo(x + bottomWidth + brh / 2, y + rightHeight + brv, x + bottomWidth, y + rightHeight + brv);
+            ctx.moveTo(x + blh, y + leftHeight + blv);
+            ctx.quadraticCurveTo(x + blh / 2, y + leftHeight + blv, x + blh / 4, y + leftHeight + blv - blv / 4);
             ctx.stroke();
 
             // left
             ctx.strokeStyle = colors[3];
             ctx.beginPath();
-            ctx.moveTo(x + r.bottom.left.h / 4, y + leftHeight + r.bottom.left.v - r.bottom.left.v / 4);
-            ctx.quadraticCurveTo(x, y + leftHeight + r.bottom.left.v / 2, x, y + leftHeight);
-            ctx.moveTo(x, y + r.top.left.v);
-            ctx.quadraticCurveTo(x, y + r.top.left.v / 2, x + r.top.left.h / 4, y + r.top.left.v / 4);
+            ctx.moveTo(x + blh / 4, y + leftHeight + blv - blv / 4);
+            ctx.quadraticCurveTo(x, y + leftHeight + blv / 2, x, y + leftHeight);
+            ctx.moveTo(x, y + tlv);
+            ctx.quadraticCurveTo(x, y + tlv / 2, x + tlh / 4, y + tlv / 4);
             ctx.stroke();
         }
         sortZ(zStack.zIndex);
@@ -181,7 +190,7 @@ console.dir(arguments);
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = fstyle;
-
+console.log(queue);
         for (i = 0, queueLen = queue.length; i < queueLen; i+=1){
             
             storageContext = queue.splice(0, 1)[0];
@@ -216,7 +225,7 @@ console.dir(arguments);
                         case "function":
                             if (renderItem.name === "startClip") {
                                 ctx.save();
-                                if(renderItem['arguments'][4])
+                                /*if(renderItem['arguments'][4])
                                 clipRoundedRect(ctx,
                                     renderItem['arguments'][0],
                                     renderItem['arguments'][1],
@@ -224,7 +233,7 @@ console.dir(arguments);
                                     renderItem['arguments'][3],
                                     renderItem['arguments'][4],
                                     renderItem['arguments'][5],
-                                    renderItem['arguments'][6]);
+                                    renderItem['arguments'][6]);*/
                             } else if (renderItem.name === "stopClip") {
                                 ctx.restore();
                             } else if (renderItem.name === "drawBorders") {
@@ -239,14 +248,14 @@ console.dir(arguments);
                                     renderItem['arguments'][1],
                                     renderItem['arguments'][3] + renderItem['arguments'][5],
                                     renderItem['arguments'][4] + renderItem['arguments'][5]);
-                             /*   strokeCorners(ctx,
+                                strokeCorners(ctx,
                                     renderItem['arguments'][0],
                                     renderItem['arguments'][1],
                                     renderItem['arguments'][2],
                                     renderItem['arguments'][3],
                                     renderItem['arguments'][4],
                                     renderItem['arguments'][5],
-                                    renderItem['arguments'][6]);*/
+                                    renderItem['arguments'][6]);
                             } else if (renderItem.name === "fillRect") {
                                 ctx.fillRect(
                                     renderItem['arguments'][0],
