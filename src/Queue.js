@@ -10,7 +10,33 @@ html2canvas.canvasContext = function (width, height) {
     this.width = width;
     this.height = height;
     //this.zIndex;
-    
+
+    this.drawBorders = function(){
+        this.storage.push(
+        {
+            type: "function",
+            name: "drawBorders",
+            'arguments': arguments
+        });
+    };
+
+    this.startClip = function(){
+        this.storage.push(
+        {
+            type: "function",
+            name: "startClip",
+            'arguments': arguments
+        });
+    };
+
+    this.stopClip = function(){
+        this.storage.push(
+        {
+            type: "function",
+            name: "stopClip"
+        });
+    };
+
     this.fillRect = function(){
         this.storage.push(
         {
@@ -18,7 +44,6 @@ html2canvas.canvasContext = function (width, height) {
             name: "fillRect",
             'arguments': arguments            
         });
-        
     };
     
        
