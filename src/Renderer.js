@@ -76,6 +76,7 @@ console.dir(arguments);
             }
 
             var calcRadius = function(value) {
+                value = parseInt(value);
                 switch (clipType) {
                     case 'fill':
                         return Math.abs(value - lineWidth);
@@ -120,15 +121,16 @@ console.dir(arguments);
         }
 
         function strokeCorners(ctx, x, y, radius, width, height, lineWidth, colors) {
+            console.dir(arguments)
             var r = radius;
-            var tlh = r.top.left.h;
-            var tlv = r.top.left.v;
-            var trh = r.top.right.h;
-            var trb = r.top.right.v;
-            var blh = r.bottom.left.h;
-            var blv = r.bottom.left.v;
-            var brv = r.bottom.right.v;
-            var brh = r.bottom.right.h;
+            var tlh = parseInt(r.top.left.h);
+            var tlv = parseInt(r.top.left.v);
+            var trh = parseInt(r.top.right.h);
+            var trb = parseInt(r.top.right.v);
+            var blh = parseInt(r.bottom.left.h);
+            var blv = parseInt(r.bottom.left.v);
+            var brv = parseInt(r.bottom.right.v);
+            var brh = parseInt(r.bottom.right.h);
 
             var topWidth = width - trh + lineWidth;
             var rightHeight = height - brv + lineWidth;
@@ -139,7 +141,7 @@ console.dir(arguments);
             ctx.strokeStyle = colors[0];
             ctx.beginPath();
             ctx.moveTo(x + tlh / 4, y + tlv / 4);
-            ctx.quadraticCurveTo(x + tlh / 2, y, x + tlh, y);
+            ctx.quadraticCurveTo(x + tlh / 2, y, (x + tlh), y);
             ctx.moveTo(x + topWidth, y);
             ctx.quadraticCurveTo(x + topWidth + trh / 2, y, x + topWidth + trh - trh / 4, y + trb / 4);
             ctx.stroke();
@@ -190,12 +192,13 @@ console.dir(arguments);
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = fstyle;
-console.log(queue);
+console.log("qu");
+        queue.shift()
         for (i = 0, queueLen = queue.length; i < queueLen; i+=1){
             
             storageContext = queue.splice(0, 1)[0];
             storageContext.canvasPosition = storageContext.canvasPosition || {};   
-           
+
             //this.canvasRenderContext(storageContext,parentctx);           
 
             // set common settings for canvas
@@ -220,12 +223,12 @@ console.log(queue);
                     console.log(renderItem.name);
                     switch(renderItem.type){
                         case "variable":
-                            ctx[renderItem.name] = renderItem['arguments'];              
+                            ctx[renderItem.name] = renderItem['arguments'];
                             break;
                         case "function":
                             if (renderItem.name === "startClip") {
                                 ctx.save();
-                                /*if(renderItem['arguments'][4])
+                                if(renderItem['arguments'][4])
                                 clipRoundedRect(ctx,
                                     renderItem['arguments'][0],
                                     renderItem['arguments'][1],
@@ -233,16 +236,16 @@ console.log(queue);
                                     renderItem['arguments'][3],
                                     renderItem['arguments'][4],
                                     renderItem['arguments'][5],
-                                    renderItem['arguments'][6]);*/
+                                    renderItem['arguments'][6]);
                             } else if (renderItem.name === "stopClip") {
                                 ctx.restore();
                             } else if (renderItem.name === "drawBorders") {
                                 ctx.strokeStyle = "red";
-                                ctx.fillRect(
+                                /*ctx.fillRect(
                                     renderItem['arguments'][0],
                                     renderItem['arguments'][1],
                                     renderItem['arguments'][3] + renderItem['arguments'][5],
-                                    renderItem['arguments'][4] + renderItem['arguments'][5]);
+                                    renderItem['arguments'][4] + renderItem['arguments'][5]);*/
 
                                 ctx.strokeRect(renderItem['arguments'][0],
                                     renderItem['arguments'][1],
