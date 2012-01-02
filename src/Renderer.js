@@ -68,8 +68,10 @@ html2canvas.Renderer = function(parseQueue, opts){
     }
 
     function canvasRenderer(zStack){
-        function clipRoundedRect(ctx, x, y, radius, width, height, clipType, lineWidth) {
-console.dir(arguments);
+        function clipRoundedRect(ctx, x, y, borderInfo, width, height, clipType) {
+
+            var lineWidth = borderInfo.borders[0].width;
+
             if (clipType == 'stroke') {
                 width += lineWidth * 2;
                 height += lineWidth * 2;
@@ -79,15 +81,15 @@ console.dir(arguments);
                 value = parseInt(value);
                 switch (clipType) {
                     case 'fill':
-                        return Math.abs(value - lineWidth);
+                        return Math.abs(value - parseInt((value > 0 ) ? lineWidth : 0));
                     case 'stroke':
-                        return Math.abs(value + lineWidth / 2);
+                        return Math.abs(value + parseInt((value > 0 ) ? lineWidth / 2 : 0));
                     default:
                         return Math.abs(value);
                 }
             };
 
-            var r = radius;
+            var r = borderInfo.radius;
             var tla = calcRadius(r.top.left.h);
             var tlb = calcRadius(r.top.left.v);
             var tra = calcRadius(r.top.right.h);
@@ -120,58 +122,161 @@ console.dir(arguments);
             ctx.clip();
         }
 
-        function strokeCorners(ctx, x, y, radius, width, height, lineWidth, colors) {
-            console.dir(arguments)
-            var r = radius;
+        function strokeRoundedRect(ctx, x, y, borderInfo, width, height) {
+            var borders = borderInfo.borders;
+
+            // Draw sides
+            for (var side = 0; side < 4; side++) {
+
+                var border = borders[side];
+                var bounds = border.bounds;
+
+                if (border.color != 'none' && typeof bounds !== "undefined") {
+
+                    var horizontal = bounds[2] > bounds[3],
+                        bigSide = bounds[-~!horizontal + 1],
+                        smallSide = bounds[-~horizontal + 1],
+                        bx = bounds[0],
+                        by = bounds[1],
+                        bw = bounds[2],
+                        bh = bounds[3];
+
+                    // clip the border side
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.moveTo(bx + [0, bw, borders[3].width, 0][side], by);
+                    ctx.lineTo(bx + bw - (side == 2 && borders[1].width || 0), by + [0, bh, 0, borders[0].width][side]);
+                    ctx.lineTo(bx + [bw - borders[1].width + 1, 0, bw + 1, bw][side], by + [border.width, bh - borders[2].width, bh, bh - borders[2].width][side]);
+                    ctx.lineTo(bx + (!side && borders[3].width || 0), by + (side == 1 ? borders[0].width : bh));
+                    ctx.clip();
+
+                    ctx.fillStyle = border.color;
+                    ctx.lineWidth = 0;
+
+                    switch (border.style) {
+                        case 'dashed':
+                            var dashSize = smallSide * 2;
+                            var amount = Math.ceil((bigSide / dashSize) / 2);
+                            if (amount % 2 != 0)
+                                amount += 1
+
+                            var space = dashSize + (bigSide - (amount * dashSize)) / (amount - 1);
+                            for (var i = 0; i <= amount * space; i += space) {
+                                ctx.beginPath();
+                                if (horizontal)
+                                    ctx.fillRect(bx + i, by, dashSize, smallSide);
+                                else
+                                    ctx.fillRect(bx, by + i, smallSide, dashSize);
+                            }
+                            break;
+                        case 'dotted':
+                            var cache = Math.PI * 2;
+                            var radius = smallSide / 2;
+                            var dotSize = smallSide;
+                            var amount = Math.ceil((bigSide / dotSize) / 2);
+                            if (amount % 2 != 0)
+                                amount += 1
+
+                            var space = dotSize + (bigSide - (amount * (radius * 2))) / (amount - 1);
+                            for (var i = radius; i <= amount * space; i += space) {
+                                ctx.beginPath();
+                                if (horizontal)
+                                    ctx.arc(bx + i, by + radius, radius, 0, cache, true);
+                                else
+                                    ctx.arc(bx + radius, by + i, radius, 0, cache, true);
+                                ctx.fill();
+                            }
+                            break;
+                        case 'double':
+                            var size = smallSide / 3,
+                                dSize = size * 2;
+                            !horizontal && (bw = size) && (size = bh);
+                            ctx.beginPath();
+                            ctx.fillRect(bx, by, bw, size);
+                            ctx.fillRect(bx + (!horizontal * dSize), by + (horizontal * dSize), bw, size);
+                            break;
+                        case 'solid':
+                            ctx.beginPath();
+                            ctx.fillRect.apply(ctx, bounds);
+                            break;
+                        case 'groove':
+                        case 'ridge':
+                        case 'inset':
+                        case 'outset':
+                        case 'hidden':
+                        case 'none':
+                        default:
+                            break;
+                    }
+
+                    ctx.restore();
+                }
+            }
+
+
+            // Draw corners
+            var r = borderInfo.radius;
             var tlh = parseInt(r.top.left.h);
             var tlv = parseInt(r.top.left.v);
             var trh = parseInt(r.top.right.h);
-            var trb = parseInt(r.top.right.v);
+            var trv = parseInt(r.top.right.v);
             var blh = parseInt(r.bottom.left.h);
             var blv = parseInt(r.bottom.left.v);
             var brv = parseInt(r.bottom.right.v);
             var brh = parseInt(r.bottom.right.h);
 
-            var topWidth = width - trh + lineWidth;
-            var rightHeight = height - brv + lineWidth;
-            var bottomWidth = width - brh + lineWidth;
-            var leftHeight = height - blv + lineWidth;
+            var topWidth = width - trh + borders[0].width;
+            var rightHeight = height - brv + borders[1].width;
+            var bottomWidth = width - brh + borders[2].width;
+            var leftHeight = height - blv + borders[3].width;
 
             // top
-            ctx.strokeStyle = colors[0];
-            ctx.beginPath();
-            ctx.moveTo(x + tlh / 4, y + tlv / 4);
-            ctx.quadraticCurveTo(x + tlh / 2, y, (x + tlh), y);
-            ctx.moveTo(x + topWidth, y);
-            ctx.quadraticCurveTo(x + topWidth + trh / 2, y, x + topWidth + trh - trh / 4, y + trb / 4);
-            ctx.stroke();
+            if (tlh > 0 || tlv > 0 || trh > 0 || trv > 0) {
+                ctx.strokeStyle = borders[0].color;
+                ctx.lineWidth = borders[0].width;
+                ctx.beginPath();
+                ctx.moveTo(x + tlh / 4, y + tlv / 4);
+                ctx.quadraticCurveTo(x + tlh / 2, y, (x + tlh), y);
+                ctx.moveTo(x + topWidth, y);
+                ctx.quadraticCurveTo(x + topWidth + trh / 2, y, x + topWidth + trh - trh / 4, y + trv / 4);
+                ctx.stroke();
+            }
 
             // right
-            ctx.strokeStyle = colors[1];
-            ctx.beginPath();
-            ctx.moveTo(x + topWidth + trh - trh / 4, y + trb / 4);
-            ctx.quadraticCurveTo(x + topWidth + trh, y + trb / 2, x + topWidth + trh, y + trb);
-            ctx.moveTo(x + bottomWidth + brh, y + rightHeight);
-            ctx.quadraticCurveTo(x + bottomWidth + brh, y + rightHeight + (brv / 2), x + bottomWidth + brh - brh / 4, y + rightHeight + (brv - brv / 4));
-            ctx.stroke();
+            if (brh > 0 || brv > 0 || trh > 0 || trv > 0) {
+                ctx.strokeStyle = borders[1].color;
+                ctx.lineWidth = borders[1].width;
+                ctx.beginPath();
+                ctx.moveTo(x + topWidth + trh - trh / 4, y + trv / 4);
+                ctx.quadraticCurveTo(x + topWidth + trh, y + trv / 2, x + topWidth + trh, y + trv);
+                ctx.moveTo(x + bottomWidth + brh, y + rightHeight);
+                ctx.quadraticCurveTo(x + bottomWidth + brh, y + rightHeight + (brv / 2), x + bottomWidth + brh - brh / 4, y + rightHeight + (brv - brv / 4));
+                ctx.stroke();
+            }
 
             // bottom
-            ctx.strokeStyle = colors[2];
-            ctx.beginPath();
-            ctx.moveTo(x + bottomWidth + brh - brh / 4, y + rightHeight + (brv - brv / 4));
-            ctx.quadraticCurveTo(x + bottomWidth + brh / 2, y + rightHeight + brv, x + bottomWidth, y + rightHeight + brv);
-            ctx.moveTo(x + blh, y + leftHeight + blv);
-            ctx.quadraticCurveTo(x + blh / 2, y + leftHeight + blv, x + blh / 4, y + leftHeight + blv - blv / 4);
-            ctx.stroke();
+            if (brh > 0 || brv > 0 || blh > 0 || blv > 0) {
+                ctx.strokeStyle = borders[2].color;
+                ctx.lineWidth = borders[2].width;
+                ctx.beginPath();
+                ctx.moveTo(x + bottomWidth + brh - brh / 4, y + rightHeight + (brv - brv / 4));
+                ctx.quadraticCurveTo(x + bottomWidth + brh / 2, y + rightHeight + brv, x + bottomWidth, y + rightHeight + brv);
+                ctx.moveTo(x + blh, y + leftHeight + blv);
+                ctx.quadraticCurveTo(x + blh / 2, y + leftHeight + blv, x + blh / 4, y + leftHeight + blv - blv / 4);
+                ctx.stroke();
+            }
 
             // left
-            ctx.strokeStyle = colors[3];
-            ctx.beginPath();
-            ctx.moveTo(x + blh / 4, y + leftHeight + blv - blv / 4);
-            ctx.quadraticCurveTo(x, y + leftHeight + blv / 2, x, y + leftHeight);
-            ctx.moveTo(x, y + tlv);
-            ctx.quadraticCurveTo(x, y + tlv / 2, x + tlh / 4, y + tlv / 4);
-            ctx.stroke();
+            if (blh > 0 || blv > 0 || tlh > 0 || tlv > 0) {
+                ctx.strokeStyle = borders[3].color;
+                ctx.lineWidth = borders[3].width;
+                ctx.beginPath();
+                ctx.moveTo(x + blh / 4, y + leftHeight + blv - blv / 4);
+                ctx.quadraticCurveTo(x, y + leftHeight + blv / 2, x, y + leftHeight);
+                ctx.moveTo(x, y + tlv);
+                ctx.quadraticCurveTo(x, y + tlv / 2, x + tlh / 4, y + tlv / 4);
+                ctx.stroke();
+            }
         }
         sortZ(zStack.zIndex);
         
@@ -192,8 +297,7 @@ console.dir(arguments);
         ctx.fillStyle = "#fff";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = fstyle;
-console.log("qu");
-        queue.shift()
+
         for (i = 0, queueLen = queue.length; i < queueLen; i+=1){
             
             storageContext = queue.splice(0, 1)[0];
@@ -207,20 +311,15 @@ console.log("qu");
             if (storageContext.clip){
                 ctx.save();
                 ctx.beginPath();
-                // console.log(storageContext);
                 ctx.rect(storageContext.clip.left, storageContext.clip.top, storageContext.clip.width, storageContext.clip.height);
                 ctx.clip();
-                console.warn("Clip");
             }
-
-            console.log(storageContext)
 
             if (storageContext.ctx.storage){
                
                 for (a = 0, storageLen = storageContext.ctx.storage.length; a < storageLen; a+=1){
                     
                     renderItem = storageContext.ctx.storage[a];
-                    console.log(renderItem.name);
                     switch(renderItem.type){
                         case "variable":
                             ctx[renderItem.name] = renderItem['arguments'];
@@ -229,50 +328,31 @@ console.log("qu");
                             if (renderItem.name === "startClip") {
                                 ctx.save();
                                 if(renderItem['arguments'][4])
-                                clipRoundedRect(ctx,
-                                    renderItem['arguments'][0],
-                                    renderItem['arguments'][1],
-                                    renderItem['arguments'][2],
-                                    renderItem['arguments'][3],
-                                    renderItem['arguments'][4],
-                                    renderItem['arguments'][5],
-                                    renderItem['arguments'][6]);
+                                    clipRoundedRect(ctx,
+                                        renderItem['arguments'][0],
+                                        renderItem['arguments'][1],
+                                        renderItem['arguments'][2],
+                                        renderItem['arguments'][3],
+                                        renderItem['arguments'][4],
+                                        renderItem['arguments'][5]);
                             } else if (renderItem.name === "stopClip") {
                                 ctx.restore();
                             } else if (renderItem.name === "drawBorders") {
-                                ctx.strokeStyle = "red";
-                                /*ctx.fillRect(
-                                    renderItem['arguments'][0],
-                                    renderItem['arguments'][1],
-                                    renderItem['arguments'][3] + renderItem['arguments'][5],
-                                    renderItem['arguments'][4] + renderItem['arguments'][5]);*/
-
-                                ctx.strokeRect(renderItem['arguments'][0],
-                                    renderItem['arguments'][1],
-                                    renderItem['arguments'][3] + renderItem['arguments'][5],
-                                    renderItem['arguments'][4] + renderItem['arguments'][5]);
-                                strokeCorners(ctx,
+                                strokeRoundedRect(ctx,
                                     renderItem['arguments'][0],
                                     renderItem['arguments'][1],
                                     renderItem['arguments'][2],
                                     renderItem['arguments'][3],
-                                    renderItem['arguments'][4],
-                                    renderItem['arguments'][5],
-                                    renderItem['arguments'][6]);
+                                    renderItem['arguments'][4]);
                             } else if (renderItem.name === "fillRect") {
                                 ctx.fillRect(
                                     renderItem['arguments'][0],
                                     renderItem['arguments'][1],
                                     renderItem['arguments'][2],
-                                    renderItem['arguments'][3]
-                                    );
+                                    renderItem['arguments'][3]);
                             } else if(renderItem.name === "fillText") {
-                                // console.log(renderItem.arguments[0]);
                                 ctx.fillText(renderItem['arguments'][0],renderItem['arguments'][1],renderItem['arguments'][2]);
-                    
                             } else if(renderItem.name === "drawImage") {
-                                //  console.log(renderItem);
-                                // console.log(renderItem.arguments[0].width);    
                                 if (renderItem['arguments'][8] > 0 && renderItem['arguments'][7]){
                                     ctx.drawImage(
                                         renderItem['arguments'][0],
@@ -283,27 +363,18 @@ console.log("qu");
                                         renderItem['arguments'][5],
                                         renderItem['arguments'][6],
                                         renderItem['arguments'][7],
-                                        renderItem['arguments'][8]
-                                        );
+                                        renderItem['arguments'][8]);
                                 }      
                             }
-                       
-  
+
                             break;
                         default:
-                               
                     }
-            
                 }
-
             }  
             if (storageContext.clip){
                 ctx.restore();
             }
-    
-
-       
-   
         }
         html2canvas.log("html2canvas: Renderer: Canvas renderer done - returning canvas obj");
         

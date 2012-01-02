@@ -565,26 +565,65 @@ html2canvas.Parse = function (element, images, opts) {
         
     }
 
-    function parseBorder(el, ctx, bounds, clip) {
+    function parseBorder(el, bounds) {
         return {
-            borders:(function (el) {
+            borders:(function () {
                 var borders = [],
                     sides = ["Top", "Right", "Bottom", "Left"],
-                    s;
+                    s,
+                    x = bounds.left,
+                    y = bounds.top,
+                    width = bounds.width,
+                    height = bounds.height,
+                    borderData = {},
+                    bx,
+                    by,
+                    bw,
+                    bh;
 
                 for (s = 0; s < 4; s += 1) {
                     var h = (s < 2) ? sides[0] : sides[2];
                     var v = (s % 2 == 0) ? sides[1] : sides[3];
-                    borders.push({
+                    borderData = {
                         width:getCSS(el, 'border' + sides[s] + 'Width', true),
                         color:getCSS(el, 'border' + sides[s] + 'Color', false),
                         style:getCSS(el, 'border' + sides[s] + 'Style', false)
-                    });
+                    };
+
+                    if (borderData.width > 0) {
+                        bx = x;
+                        by = y;
+                        bw = width;
+                        bh = height;
+
+                        switch (s) {
+                            case 0: // top border
+                                bh = borderData.width;
+                                break;
+                            case 1: // right border
+                                bx = x + width - (borderData.width);
+                                bw = borderData.width;
+                                break;
+                            case 2: // bottom border
+                                by = (by + height) - (borderData.width);
+                                bh = borderData.width;
+                                break;
+                            case 3: // left border
+                                bw = borderData.width;
+                                break;
+                        }
+
+                        if (bw > 0 && bh > 0) {
+                            borderData.bounds = [bx, by, bw, bh]
+                        }
+                    }
+                    borders.push(borderData);
                 }
+
                 return borders;
 
-            }(el)),
-            radius:(function (el) {
+            }()),
+            radius:(function () {
                 // TODO: remove px on a better way
                 // TODO: add support for em % etc.
                 var topLeft = getCSS(el, 'borderTopLeftRadius', false).replace('px', '').split(' ');
@@ -614,7 +653,7 @@ html2canvas.Parse = function (element, images, opts) {
                         }
                     }};
                 return radius;
-            }(el))
+            }())
         }
     }
 
@@ -1037,12 +1076,10 @@ html2canvas.Parse = function (element, images, opts) {
         ctx.setVariable("globalAlpha", stack.opacity);  
 
         // draw element borders
-        var borderInfo = parseBorder(el, ctx, bounds);
+        var borderInfo = parseBorder(el, bounds);
         borders = borderInfo.borders;
         stack.borders = borders;
         stack.radius = borderInfo.radius;
-
-
     
         // let's modify clip area for child elements, so borders dont get overwritten
     
@@ -1079,8 +1116,7 @@ html2canvas.Parse = function (element, images, opts) {
         }
 
         var lineWidth = borders[0].width;
-        ctx.startClip(bgbounds.left, bgbounds.top, borderInfo.radius, bgbounds.width, bgbounds.height, 'fill', lineWidth);
-   console.log(bgbounds)
+        ctx.startClip(bgbounds.left, bgbounds.top, borderInfo, bgbounds.width, bgbounds.height, 'fill');
         if (bgbounds.height > 0 && bgbounds.width > 0){
             renderRect(
                 ctx,
@@ -1177,10 +1213,9 @@ html2canvas.Parse = function (element, images, opts) {
                 break;
         }
         ctx.stopClip();
-        ctx.setVariable('lineWidth', lineWidth);
         ctx.setVariable('lineJoin', 'round');
-        ctx.startClip(x, y, borderInfo.radius, bgbounds.width, bgbounds.height, 'stroke', lineWidth);
-        ctx.drawBorders(x + lineWidth / 2, y + lineWidth / 2, borderInfo.radius, bgbounds.width, bgbounds.height, lineWidth, ['red','yellow','green','blue']);
+        ctx.startClip(x, y, borderInfo, bgbounds.width, bgbounds.height, 'stroke');
+        ctx.drawBorders(x + lineWidth / 2, y + lineWidth / 2, borderInfo, bgbounds.width, bgbounds.height);
         ctx.stopClip();
         return zindex.children[stackLength - 1];
     }
