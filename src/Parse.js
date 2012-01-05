@@ -1115,7 +1115,6 @@ html2canvas.Parse = function (element, images, opts) {
     
         }
 
-        var lineWidth = borders[0].width;
         ctx.startClip(bgbounds.left, bgbounds.top, borderInfo, bgbounds.width, bgbounds.height, 'fill');
         if (bgbounds.height > 0 && bgbounds.width > 0){
             renderRect(
@@ -1215,7 +1214,7 @@ html2canvas.Parse = function (element, images, opts) {
         ctx.stopClip();
         ctx.setVariable('lineJoin', 'round');
         ctx.startClip(x, y, borderInfo, bgbounds.width, bgbounds.height, 'stroke');
-        ctx.drawBorders(x + lineWidth / 2, y + lineWidth / 2, borderInfo, bgbounds.width, bgbounds.height);
+        ctx.drawBorders(x, y, borderInfo, bgbounds.width, bgbounds.height);
         ctx.stopClip();
         return zindex.children[stackLength - 1];
     }

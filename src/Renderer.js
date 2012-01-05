@@ -70,56 +70,109 @@ html2canvas.Renderer = function(parseQueue, opts){
     function canvasRenderer(zStack){
         function clipRoundedRect(ctx, x, y, borderInfo, width, height, clipType) {
 
-            var lineWidth = borderInfo.borders[0].width;
+            var borders = borderInfo.borders;
 
-            if (clipType == 'stroke') {
-                width += lineWidth * 2;
-                height += lineWidth * 2;
-            }
-
-            var calcRadius = function(value) {
+            var calcRadius = function(value, lineWidth) {
                 value = parseInt(value);
                 switch (clipType) {
                     case 'fill':
                         return Math.abs(value - parseInt((value > 0 ) ? lineWidth : 0));
                     case 'stroke':
-                        return Math.abs(value + parseInt((value > 0 ) ? lineWidth / 2 : 0));
+                        return Math.abs(value + parseInt((value > 0 ) ? 0 : 0));
                     default:
                         return Math.abs(value);
                 }
             };
 
             var r = borderInfo.radius;
-            var tla = calcRadius(r.top.left.h);
-            var tlb = calcRadius(r.top.left.v);
-            var tra = calcRadius(r.top.right.h);
-            var trb = calcRadius(r.top.right.v);
-            var bla = calcRadius(r.bottom.left.h);
-            var blb = calcRadius(r.bottom.left.v);
-            var bra = calcRadius(r.bottom.right.h);
-            var brb = calcRadius(r.bottom.right.v);
+            var tlh = calcRadius(r.top.left.h, borders[0].width);
+            var tlv = calcRadius(r.top.left.v, borders[3].width);
+            var trh = calcRadius(r.top.right.h, borders[0].width);
+            var trv = calcRadius(r.top.right.v, borders[1].width);
+            var blh = calcRadius(r.bottom.left.h, borders[2].width);
+            var blv = calcRadius(r.bottom.left.v, borders[3].width);
+            var brh = calcRadius(r.bottom.right.h, borders[2].width);
+            var brv = calcRadius(r.bottom.right.v, borders[1].width);
 
-            var topWidth = width - tra;
-            var rightHeight = height - brb;
-            var bottomWidth = width - bra;
-            var leftHeight = height - blb;
+            if (clipType == 'stroke') {
+                var topWidth = width - trh + borders[3].width + borders[1].width;
+                var rightHeight = height - brv + borders[0].width + borders[2].width;
+                var bottomWidth = width - brh + borders[3].width + borders[1].width;
+                var leftHeight = height - blv + borders[0].width + borders[2].width;
+            }else {
+                var topWidth = width - trh;
+                var rightHeight = height - brv;
+                var bottomWidth = width - brh;
+                var leftHeight = height - blv;
+            }
 
             ctx.beginPath();
-            ctx.moveTo(x + tla / 4, y + tlb / 4);
-            ctx.quadraticCurveTo(x + tla / 2, y, x + tla, y);
+            var topLeft = getCurvePoints(x, y, tlh, tlv).topLeft;
+            ctx.moveTo(topLeft.start.x, topLeft.start.y);
+            topLeft.curveTo(ctx)
             ctx.lineTo(x + topWidth, y);
-            ctx.quadraticCurveTo(x + topWidth + tra / 2, y, x + topWidth + tra - tra / 4, y + trb / 4);
-            ctx.quadraticCurveTo(x + topWidth + tra, y + trb / 2, x + topWidth + tra, y + trb);
-            ctx.lineTo(x + bottomWidth + bra, y + rightHeight);
-            ctx.quadraticCurveTo(x + bottomWidth + bra, y + rightHeight + (brb / 2), x + bottomWidth + bra - bra / 4, y + rightHeight + (brb - brb / 4));
-            ctx.quadraticCurveTo(x + bottomWidth + bra / 2, y + rightHeight + brb, x + bottomWidth, y + rightHeight + brb);
-            ctx.lineTo(x + bla, y + leftHeight + blb);
-            ctx.quadraticCurveTo(x + bla / 2, y + leftHeight + blb, x + bla / 4, y + leftHeight + blb - blb / 4);
-            ctx.quadraticCurveTo(x, y + leftHeight + blb / 2, x, y + leftHeight);
-            ctx.lineTo(x, y + tlb);
-            ctx.quadraticCurveTo(x, y + tlb / 2, x + tla / 4, y + tlb / 4);
+            getCurvePoints(x + topWidth, y, trh, trv).topRight.curveTo(ctx);
+            ctx.lineTo(x + bottomWidth + brh, y + rightHeight);
+            getCurvePoints(x + bottomWidth, y + rightHeight, brh, brv).bottomRight.curveTo(ctx);
+            ctx.lineTo(x + blh, y + leftHeight + blv);
+            getCurvePoints(x, y + leftHeight, blh, blv).bottomLeft.curveTo(ctx);
+            ctx.lineTo(x, y + tlv);
             ctx.closePath();
             ctx.clip();
+        }
+
+        var getCurvePoints = function (x, y, r1, r2) {
+            var kappa = .5522848, // 4 * ((Math.sqrt(2) - 1) / 3)
+                    ox = (r1) * kappa, // control point offset horizontal
+                    oy = (r2) * kappa, // control point offset vertical
+                    xm = x + r1, // x-middle
+                    ym = y + r2; // y-middle
+            return {
+                topLeft:new BezierCurve({x:x, y:ym}, {x:x, y:ym - oy}, {x:xm - ox, y:y}, {x:xm, y:y}),
+                topRight:new BezierCurve({x:x, y:y}, {x:x + ox, y:y}, {x:xm, y:ym - oy}, {x:xm, y:ym}),
+                bottomRight:new BezierCurve({x:xm, y:y}, {x:xm, y:y + oy}, {x:x + ox, y:ym}, {x:x, y:ym}),
+                bottomLeft:new BezierCurve({x:xm, y:ym}, {x:xm - ox, y:ym}, {x:x, y:y + oy}, {x:x, y:y})};
+        };
+
+        function BezierCurve(start, startControl, endControl, end) {
+
+            var lerp = function (a, b, t) {
+                return {
+                    x:a.x + (b.x - a.x) * t,
+                    y:a.y + (b.y - a.y) * t
+                };
+            }
+
+            return {
+                start: start,
+                startControl: startControl,
+                endControl: endControl,
+                end: end,
+                subdivide:function (t) {
+                    var ab = lerp(start, startControl, t),
+                            bc = lerp(startControl, endControl, t),
+                            cd = lerp(endControl, end, t),
+                            abbc = lerp(ab, bc, t),
+                            bccd = lerp(bc, cd, t),
+                            dest = lerp(abbc, bccd, t);
+                    return [
+                        new BezierCurve(start, ab, abbc, dest),
+                        new BezierCurve(dest, bccd, cd, end)
+                    ];
+                },
+                stroke:function (ctx) {
+                    ctx.beginPath();
+                    ctx.moveTo(start.x, start.y);
+                    ctx.bezierCurveTo(startControl.x, startControl.y, endControl.x, endControl.y, end.x, end.y);
+                    ctx.stroke();
+                },
+                curveTo:function (ctx) {
+                    ctx.bezierCurveTo(startControl.x, startControl.y, endControl.x, endControl.y, end.x, end.y);
+                },
+                curveToReversed:function (ctx) {
+                    ctx.bezierCurveTo(endControl.x, endControl.y, startControl.x, startControl.y, start.x, start.y);
+                }
+            }
         }
 
         function strokeRoundedRect(ctx, x, y, borderInfo, width, height) {
@@ -224,58 +277,98 @@ html2canvas.Renderer = function(parseQueue, opts){
             var blv = parseInt(r.bottom.left.v);
             var brv = parseInt(r.bottom.right.v);
             var brh = parseInt(r.bottom.right.h);
+///["Top", "Right", "Bottom", "Left"
+            var topWidth = width - trh + borders[1].width + borders[3].width;
+            var rightHeight = height - brv + borders[0].width;
+            var bottomWidth = width - brh  + borders[1].width + borders[3].width;
+            var leftHeight = height - blv + borders[2].width;
 
-            var topWidth = width - trh + borders[0].width;
-            var rightHeight = height - brv + borders[1].width;
-            var bottomWidth = width - brh + borders[2].width;
-            var leftHeight = height - blv + borders[3].width;
+            var topLeftO = getCurvePoints(
+                x,
+                y,
+                tlh,
+                tlv
+            ).topLeft.subdivide(0.5);
+            var topLeftI = getCurvePoints(
+                x + borders[1].width,
+                y + borders[0].width,
+                Math.max(0, tlh - borders[1].width),
+                Math.max(0, tlv - borders[0].width)
+            ).topLeft.subdivide(0.5);
 
+            var topRightO = getCurvePoints(
+                x + topWidth,
+                y,
+                trh,
+                trv
+            ).topRight.subdivide(0.5);
+            var topRightI = getCurvePoints(
+                x + topWidth,
+                y + borders[0].width,
+                trh - borders[3].width,
+                trv - borders[0].width
+            ).topRight.subdivide(0.5);
+
+            var bottomRightO = getCurvePoints(
+                x + bottomWidth,
+                y + rightHeight + borders[2].width,
+                brh,
+                brv
+            ).bottomRight.subdivide(0.5);
+            var bottomRightI = getCurvePoints(
+                x + bottomWidth,
+                y + rightHeight + borders[0].width,
+                brh - borders[1].width,
+                brv - borders[0].width
+            ).bottomRight.subdivide(0.5);
+
+            var bottomLeftO = getCurvePoints(
+                x,
+                y + leftHeight + borders[0].width,
+                blh,
+                blv
+            ).bottomLeft.subdivide(0.5);
+            var bottomLeftI = getCurvePoints(
+                x + borders[3].width,
+                y + leftHeight + borders[0].width,
+                blh - borders[3].width,
+                blv - borders[2].width
+            ).bottomLeft.subdivide(0.5);
+
+            function drawCorner(outer, inner, i) {
+                ctx.beginPath();
+                ctx.moveTo(outer[i].start.x, outer[i].start.y);
+                outer[i].curveTo(ctx);
+                ctx.lineTo(inner[i].end.x, inner[i].end.y);
+                inner[i].curveToReversed(ctx);
+                ctx.fill();
+            }
             // top
             if (tlh > 0 || tlv > 0 || trh > 0 || trv > 0) {
-                ctx.strokeStyle = borders[0].color;
-                ctx.lineWidth = borders[0].width;
-                ctx.beginPath();
-                ctx.moveTo(x + tlh / 4, y + tlv / 4);
-                ctx.quadraticCurveTo(x + tlh / 2, y, (x + tlh), y);
-                ctx.moveTo(x + topWidth, y);
-                ctx.quadraticCurveTo(x + topWidth + trh / 2, y, x + topWidth + trh - trh / 4, y + trv / 4);
-                ctx.stroke();
+                ctx.fillStyle = borders[0].color;
+                drawCorner(topLeftO, topLeftI, 1);
+                drawCorner(topRightO, topRightI, 0);
             }
 
             // right
             if (brh > 0 || brv > 0 || trh > 0 || trv > 0) {
-                ctx.strokeStyle = borders[1].color;
-                ctx.lineWidth = borders[1].width;
-                ctx.beginPath();
-                ctx.moveTo(x + topWidth + trh - trh / 4, y + trv / 4);
-                ctx.quadraticCurveTo(x + topWidth + trh, y + trv / 2, x + topWidth + trh, y + trv);
-                ctx.moveTo(x + bottomWidth + brh, y + rightHeight);
-                ctx.quadraticCurveTo(x + bottomWidth + brh, y + rightHeight + (brv / 2), x + bottomWidth + brh - brh / 4, y + rightHeight + (brv - brv / 4));
-                ctx.stroke();
+                ctx.fillStyle = borders[1].color;
+                drawCorner(topRightO, topRightI, 1);
+                drawCorner(bottomRightO, bottomRightI, 0);
             }
 
             // bottom
             if (brh > 0 || brv > 0 || blh > 0 || blv > 0) {
-                ctx.strokeStyle = borders[2].color;
-                ctx.lineWidth = borders[2].width;
-                ctx.beginPath();
-                ctx.moveTo(x + bottomWidth + brh - brh / 4, y + rightHeight + (brv - brv / 4));
-                ctx.quadraticCurveTo(x + bottomWidth + brh / 2, y + rightHeight + brv, x + bottomWidth, y + rightHeight + brv);
-                ctx.moveTo(x + blh, y + leftHeight + blv);
-                ctx.quadraticCurveTo(x + blh / 2, y + leftHeight + blv, x + blh / 4, y + leftHeight + blv - blv / 4);
-                ctx.stroke();
+                ctx.fillStyle = borders[2].color;
+                drawCorner(bottomRightO, bottomRightI, 1);
+                drawCorner(bottomLeftO, bottomLeftI, 0);
             }
 
             // left
             if (blh > 0 || blv > 0 || tlh > 0 || tlv > 0) {
-                ctx.strokeStyle = borders[3].color;
-                ctx.lineWidth = borders[3].width;
-                ctx.beginPath();
-                ctx.moveTo(x + blh / 4, y + leftHeight + blv - blv / 4);
-                ctx.quadraticCurveTo(x, y + leftHeight + blv / 2, x, y + leftHeight);
-                ctx.moveTo(x, y + tlv);
-                ctx.quadraticCurveTo(x, y + tlv / 2, x + tlh / 4, y + tlv / 4);
-                ctx.stroke();
+                ctx.fillStyle = borders[3].color;
+                drawCorner(bottomLeftO, bottomLeftI, 1);
+                drawCorner(topLeftO, topLeftI, 0);
             }
         }
         sortZ(zStack.zIndex);
