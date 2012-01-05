@@ -9,14 +9,18 @@
         <script type="text/javascript" src="test.js"></script>
         <style type="text/css">
 
-            #div {
-                background: brown /*url(image.jpg) repeat-x*/;
+            div {
+                background: #f5f5dc url(image.jpg) repeat-x;
                 margin: 40px;
                 height: 300px;
                 width: 300px;
+                display: inline-block;
                 border: 6px solid;
-                border-color: red yellow green blue;
+                border-color: red green yellow blue;
                 border-style: dotted dashed solid double;
+            }
+
+            .rounded {
                 border-radius: 50px 50px;
                 border-top-left-radius: 10px 10px;
                 border-top-right-radius: 80px 180px;
@@ -24,12 +28,19 @@
                 border-bottom-right-radius: 20px 20px;
             }
 
+            .width {
+                border-top-width: 20px;
+                border-bottom-width: 40px;
+            }
+
         </style>
     </head>
 
     <body>
 
-        <div id="div"><!--Rounded corners =)--></div>
+        <div class="rounded"><!--Rounded corners =)--></div>
+
+        <div class="rounded width"><!--Variable width--></div>
 
     </body>
 </html>
