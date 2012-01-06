@@ -1115,7 +1115,7 @@ html2canvas.Parse = function (element, images, opts) {
     
         }
 
-        ctx.startClip(bgbounds.left, bgbounds.top, borderInfo, bgbounds.width, bgbounds.height, 'fill');
+        ctx.startClip(x, y, borderInfo, bgbounds.width, bgbounds.height, 'fill');
         if (bgbounds.height > 0 && bgbounds.width > 0){
             renderRect(
                 ctx,
